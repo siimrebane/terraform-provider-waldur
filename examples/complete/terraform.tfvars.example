@@ -1,0 +1,14 @@
+# Copy this file to terraform.tfvars and fill in your values
+# NEVER commit terraform.tfvars to version control!
+
+waldur_endpoint = "https://your-waldur-instance.com"
+waldur_token    = "your-api-token-here"
+
+project_name = "My Project Name"
+environment  = "dev"
+
+# Find these UUIDs via Waldur API or UI
+offering_uuid    = "your-offering-uuid"
+volume_type_uuid = "your-volume-type-uuid"
+subnet_uuid      = "your-subnet-uuid"
+ssh_key_uuid     = "your-ssh-key-uuid"
