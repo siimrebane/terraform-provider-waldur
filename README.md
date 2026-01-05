@@ -27,7 +27,13 @@ Then run `terraform init` to download the provider.
 ```hcl
 provider "waldur" {
   endpoint = "https://your-waldur-instance.com"
-  token    = var.waldur_token  # API token from Waldur
+  token    = var.waldur_token
+}
+
+variable "waldur_token" {
+  description = "Waldur API token"
+  type        = string
+  sensitive   = true
 }
 ```
 
@@ -38,51 +44,157 @@ Get your API token from Waldur:
 2. Go to Profile → API Token
 3. Copy the token
 
-**Security:** Never commit tokens to version control. Use environment variables or tfvars files:
+**Security:** Never commit tokens to version control. Use environment variables:
 
 ```bash
 export TF_VAR_waldur_token="your-token-here"
 ```
 
-## Quick Start
+## Quick Start - Create a VM
 
 ```hcl
-# Look up existing project
-data "waldur_structure_project" "myproject" {
+terraform {
+  required_providers {
+    waldur = {
+      source  = "siimrebane/waldur"
+      version = "~> 0.1"
+    }
+  }
+}
+
+provider "waldur" {
+  endpoint = "https://your-waldur-instance.com"
+  token    = var.waldur_token
+}
+
+variable "waldur_token" {
+  type      = string
+  sensitive = true
+}
+
+# Look up your project
+data "waldur_structure_project" "project" {
   name = "My Project Name"
 }
 
 # Look up tenant (OpenStack project)
 data "waldur_openstack_tenant" "tenant" {
-  project_uuid = data.waldur_structure_project.myproject.id
+  project_uuid = data.waldur_structure_project.project.id
 }
 
 # Look up flavor and image
-data "waldur_openstack_flavor" "small" {
+data "waldur_openstack_flavor" "flavor" {
   name        = "m1.small"
   tenant_uuid = data.waldur_openstack_tenant.tenant.id
 }
 
-data "waldur_openstack_image" "ubuntu" {
+data "waldur_openstack_image" "image" {
   name        = "Ubuntu 22.04"
   tenant_uuid = data.waldur_openstack_tenant.tenant.id
 }
 
 # Create a VM
-resource "waldur_openstack_instance" "myvm" {
+resource "waldur_openstack_instance" "vm" {
   name    = "my-terraform-vm"
-  project = data.waldur_structure_project.myproject.id
+  project = data.waldur_structure_project.project.id
 
   offering           = "your-offering-uuid"
-  flavor             = "https://your-waldur/api/openstack-flavors/${data.waldur_openstack_flavor.small.id}/"
-  image              = "https://your-waldur/api/openstack-images/${data.waldur_openstack_image.ubuntu.id}/"
+  flavor             = "${var.waldur_endpoint}/api/openstack-flavors/${data.waldur_openstack_flavor.flavor.id}/"
+  image              = "${var.waldur_endpoint}/api/openstack-images/${data.waldur_openstack_image.image.id}/"
   system_volume_size = 20480  # 20GB in MiB
+  system_volume_type = "${var.waldur_endpoint}/api/openstack-volume-types/your-volume-type-uuid/"
 
-  ports = ["https://your-waldur/api/openstack-subnets/subnet-uuid/"]
+  ports          = ["${var.waldur_endpoint}/api/openstack-subnets/your-subnet-uuid/"]
+  ssh_public_key = "${var.waldur_endpoint}/api/keys/your-ssh-key-uuid/"
+}
+
+output "vm_id" {
+  value = waldur_openstack_instance.vm.id
 }
 
 output "vm_ip" {
-  value = waldur_openstack_instance.myvm.internal_ips
+  value = waldur_openstack_instance.vm.internal_ips
+}
+```
+
+Then run:
+```bash
+export TF_VAR_waldur_token="your-token"
+terraform init
+terraform plan
+terraform apply
+```
+
+## ETAIS Example (minu.etais.ee)
+
+Working example for Estonian Scientific Computing Infrastructure:
+
+```hcl
+terraform {
+  required_providers {
+    waldur = {
+      source  = "siimrebane/waldur"
+      version = "~> 0.1"
+    }
+  }
+}
+
+provider "waldur" {
+  endpoint = "https://minu.etais.ee"
+  token    = var.waldur_token
+}
+
+variable "waldur_token" {
+  type      = string
+  sensitive = true
+}
+
+# Look up your project by name
+data "waldur_structure_project" "project" {
+  name = "Your Project Name"
+}
+
+# Look up tenant
+data "waldur_openstack_tenant" "tenant" {
+  project_uuid = data.waldur_structure_project.project.id
+}
+
+# Look up flavor and image
+data "waldur_openstack_flavor" "flavor" {
+  name        = "g1.small1"
+  tenant_uuid = data.waldur_openstack_tenant.tenant.id
+}
+
+data "waldur_openstack_image" "ubuntu" {
+  name        = "Ubuntu 24.04 x86_64"
+  tenant_uuid = data.waldur_openstack_tenant.tenant.id
+}
+
+# Create VM
+resource "waldur_openstack_instance" "vm" {
+  name    = "my-etais-vm"
+  project = data.waldur_structure_project.project.id
+
+  # Get offering UUID from: https://minu.etais.ee/api/marketplace-public-offerings/?type=OpenStack.Instance
+  offering           = "972a1ad09a68446e9e1a1824529b7142"
+  flavor             = "https://minu.etais.ee/api/openstack-flavors/${data.waldur_openstack_flavor.flavor.id}/"
+  image              = "https://minu.etais.ee/api/openstack-images/${data.waldur_openstack_image.ubuntu.id}/"
+  system_volume_size = 10240  # 10GB in MiB
+  system_volume_type = "https://minu.etais.ee/api/openstack-volume-types/6e48614ac58d40bba626cec8158f432b/"
+
+  # Get subnet UUID from: https://minu.etais.ee/api/openstack-subnets/?tenant_uuid=YOUR_TENANT
+  ports = ["https://minu.etais.ee/api/openstack-subnets/YOUR_SUBNET_UUID/"]
+
+  # Get SSH key UUID from: https://minu.etais.ee/api/keys/
+  ssh_public_key = "https://minu.etais.ee/api/keys/YOUR_SSH_KEY_UUID/"
+}
+
+output "vm_id" {
+  value = waldur_openstack_instance.vm.id
+}
+
+output "vm_ip" {
+  value = waldur_openstack_instance.vm.internal_ips
 }
 ```
 
@@ -113,26 +225,40 @@ See the [examples](./examples/) folder for complete working examples:
 
 ## Finding UUIDs
 
-To find the UUIDs needed for your configuration, you can use the Waldur API:
+Use the Waldur API to find required UUIDs:
 
 ```bash
-# List projects
-curl -H "Authorization: Token YOUR_TOKEN" \
-  "https://your-waldur/api/projects/"
+# Set your token
+export TOKEN="your-api-token"
+export WALDUR="https://your-waldur-instance.com"
+
+# List your projects
+curl -H "Authorization: Token $TOKEN" "$WALDUR/api/projects/"
+
+# Get tenant UUID (after you have project UUID)
+curl -H "Authorization: Token $TOKEN" "$WALDUR/api/openstack-tenants/?project_uuid=PROJECT_UUID"
 
 # List offerings (needed for VM creation)
-curl -H "Authorization: Token YOUR_TOKEN" \
-  "https://your-waldur/api/marketplace-public-offerings/?type=OpenStack.Instance"
+curl -H "Authorization: Token $TOKEN" "$WALDUR/api/marketplace-public-offerings/?type=OpenStack.Instance"
 
-# List subnets
-curl -H "Authorization: Token YOUR_TOKEN" \
-  "https://your-waldur/api/openstack-subnets/?tenant_uuid=TENANT_UUID"
+# List subnets (after you have tenant UUID)
+curl -H "Authorization: Token $TOKEN" "$WALDUR/api/openstack-subnets/?tenant_uuid=TENANT_UUID"
+
+# List volume types
+curl -H "Authorization: Token $TOKEN" "$WALDUR/api/openstack-volume-types/?tenant_uuid=TENANT_UUID"
+
+# List your SSH keys
+curl -H "Authorization: Token $TOKEN" "$WALDUR/api/keys/"
 ```
+
+## Known Issues
+
+After `terraform apply`, you may see errors about "unknown values" for some fields (like `access_url`, `hypervisor_hostname`). These are cosmetic - the VM is still created successfully. Check with `terraform state show` or in the Waldur UI.
 
 ## License
 
-MIT License - see [LICENSE](./LICENSE) for details.
+MIT License
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or pull request.
+Contributions are welcome! Please open an issue or pull request on [GitHub](https://github.com/siimrebane/terraform-provider-waldur).
