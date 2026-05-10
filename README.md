@@ -1,133 +1,19 @@
-# Terraform Provider for Waldur
+# Terraform Provider for Waldur (siimrebane fork)
 
-Terraform provider for managing resources in [Waldur](https://waldur.com/) - a hybrid cloud management platform. This provider allows you to create and manage OpenStack virtual machines through Waldur's marketplace.
+A Terraform provider for managing OpenStack infrastructure on
+[Waldur](https://waldur.com/) — Estonia's national academic
+research-computing platform [ETAIS](https://etais.ee/) is the most
+common deployment.
 
-## Requirements
-
-- [Terraform](https://www.terraform.io/downloads.html) >= 1.0
-- A Waldur account with API access
+This is a fork of the upstream
+[`waldur/terraform-provider-waldur`](https://github.com/waldur/terraform-provider-waldur)
+generator output, with three additional fixes applied so that
+end-to-end use against ETAIS works without manual workarounds.
+The fork was developed as part of a Tallinn University of Technology
+master's thesis on automated IaC provisioning for university CS
+courses; the fixes are queued for upstream PR submission.
 
 ## Installation
-
-```hcl
-terraform {
-  required_providers {
-    waldur = {
-      source  = "siimrebane/waldur"
-      version = "~> 0.1"
-    }
-  }
-}
-```
-
-Then run `terraform init` to download the provider.
-
-## Configuration
-
-```hcl
-provider "waldur" {
-  endpoint = "https://your-waldur-instance.com"
-  token    = var.waldur_token
-}
-
-variable "waldur_token" {
-  description = "Waldur API token"
-  type        = string
-  sensitive   = true
-}
-```
-
-### Authentication
-
-Get your API token from Waldur:
-1. Log in to your Waldur instance
-2. Go to Profile → API Token
-3. Copy the token
-
-**Security:** Never commit tokens to version control. Use environment variables:
-
-```bash
-export TF_VAR_waldur_token="your-token-here"
-```
-
-## Quick Start - Create a VM
-
-```hcl
-terraform {
-  required_providers {
-    waldur = {
-      source  = "siimrebane/waldur"
-      version = "~> 0.1"
-    }
-  }
-}
-
-provider "waldur" {
-  endpoint = "https://your-waldur-instance.com"
-  token    = var.waldur_token
-}
-
-variable "waldur_token" {
-  type      = string
-  sensitive = true
-}
-
-# Look up your project
-data "waldur_structure_project" "project" {
-  name = "My Project Name"
-}
-
-# Look up tenant (OpenStack project)
-data "waldur_openstack_tenant" "tenant" {
-  project_uuid = data.waldur_structure_project.project.id
-}
-
-# Look up flavor and image
-data "waldur_openstack_flavor" "flavor" {
-  name        = "m1.small"
-  tenant_uuid = data.waldur_openstack_tenant.tenant.id
-}
-
-data "waldur_openstack_image" "image" {
-  name        = "Ubuntu 22.04"
-  tenant_uuid = data.waldur_openstack_tenant.tenant.id
-}
-
-# Create a VM
-resource "waldur_openstack_instance" "vm" {
-  name    = "my-terraform-vm"
-  project = data.waldur_structure_project.project.id
-
-  offering           = "your-offering-uuid"
-  flavor             = "${var.waldur_endpoint}/api/openstack-flavors/${data.waldur_openstack_flavor.flavor.id}/"
-  image              = "${var.waldur_endpoint}/api/openstack-images/${data.waldur_openstack_image.image.id}/"
-  system_volume_size = 20480  # 20GB in MiB
-  system_volume_type = "${var.waldur_endpoint}/api/openstack-volume-types/your-volume-type-uuid/"
-
-  ports          = ["${var.waldur_endpoint}/api/openstack-subnets/your-subnet-uuid/"]
-  ssh_public_key = "${var.waldur_endpoint}/api/keys/your-ssh-key-uuid/"
-}
-
-output "vm_id" {
-  value = waldur_openstack_instance.vm.id
-}
-
-output "vm_ip" {
-  value = waldur_openstack_instance.vm.internal_ips
-}
-```
-
-Then run:
-```bash
-export TF_VAR_waldur_token="your-token"
-terraform init
-terraform plan
-terraform apply
-```
-
-## ETAIS Example (minu.etais.ee)
-
-Working example for Estonian Scientific Computing Infrastructure:
 
 ```hcl
 terraform {
@@ -143,122 +29,108 @@ provider "waldur" {
   endpoint = "https://minu.etais.ee"
   token    = var.waldur_token
 }
+```
 
-variable "waldur_token" {
-  type      = string
-  sensitive = true
+Then `terraform init` downloads the provider from the
+[Terraform Registry](https://registry.terraform.io/providers/siimrebane/waldur).
+
+## What this fork adds
+
+Three fixes on top of `waldur/waldur` v0.0.8 that the upstream
+provider does not yet have. Each is a focused change in the
+generator templates rather than a hand-edit of generated code, so
+the upstream code generator can absorb the patches as-is.
+
+### 1. `waldur_marketplace_offering` data source no longer crashes on `future_prices`
+
+Upstream emits `FuturePrices map[string]float64` for the
+`future_prices` field in offering responses. ETAIS sometimes
+returns the values as quoted strings, so the data source crashed on
+deserialisation and every Terraform configuration had to hardcode
+the offering URL.
+
+This fork extends the existing `FlexibleNumber` substitution to
+cover map-of-number response fields. After regeneration the data
+source resolves cleanly:
+
+```hcl
+data "waldur_marketplace_offering" "vm" {
+  filters = {
+    type       = "OpenStack.Instance"
+    name_exact = "Virtual machine in my-tenant"
+  }
 }
 
-# Look up your project by name
-data "waldur_structure_project" "project" {
-  name = "Your Project Name"
-}
-
-# Look up tenant
-data "waldur_openstack_tenant" "tenant" {
-  project_uuid = data.waldur_structure_project.project.id
-}
-
-# Look up flavor and image
-data "waldur_openstack_flavor" "flavor" {
-  name        = "g1.small1"
-  tenant_uuid = data.waldur_openstack_tenant.tenant.id
-}
-
-data "waldur_openstack_image" "ubuntu" {
-  name        = "Ubuntu 24.04 x86_64"
-  tenant_uuid = data.waldur_openstack_tenant.tenant.id
-}
-
-# Create VM
 resource "waldur_openstack_instance" "vm" {
-  name    = "my-etais-vm"
-  project = data.waldur_structure_project.project.id
-
-  # Get offering UUID from: https://minu.etais.ee/api/marketplace-public-offerings/?type=OpenStack.Instance
-  offering           = "972a1ad09a68446e9e1a1824529b7142"
-  flavor             = "https://minu.etais.ee/api/openstack-flavors/${data.waldur_openstack_flavor.flavor.id}/"
-  image              = "https://minu.etais.ee/api/openstack-images/${data.waldur_openstack_image.ubuntu.id}/"
-  system_volume_size = 10240  # 10GB in MiB
-  system_volume_type = "https://minu.etais.ee/api/openstack-volume-types/6e48614ac58d40bba626cec8158f432b/"
-
-  # Get subnet UUID from: https://minu.etais.ee/api/openstack-subnets/?tenant_uuid=YOUR_TENANT
-  ports = ["https://minu.etais.ee/api/openstack-subnets/YOUR_SUBNET_UUID/"]
-
-  # Get SSH key UUID from: https://minu.etais.ee/api/keys/
-  ssh_public_key = "https://minu.etais.ee/api/keys/YOUR_SSH_KEY_UUID/"
-}
-
-output "vm_id" {
-  value = waldur_openstack_instance.vm.id
-}
-
-output "vm_ip" {
-  value = waldur_openstack_instance.vm.internal_ips
+  offering = data.waldur_marketplace_offering.vm.url
+  # ...
 }
 ```
 
-## Data Sources
+### 2. `security_groups` actually applied at create time
 
-| Name | Description |
-|------|-------------|
-| `waldur_structure_project` | Look up a project by name |
-| `waldur_openstack_tenant` | Look up an OpenStack tenant |
-| `waldur_openstack_flavor` | Look up VM flavors (sizes) |
-| `waldur_openstack_image` | Look up OS images |
-| `waldur_openstack_instance` | Look up existing VMs |
-| `waldur_openstack_security_group` | Look up security groups |
-| `waldur_openstack_floating_ip` | Look up floating IPs |
+Upstream silently dropped `security_groups` set on
+`waldur_openstack_instance`. The nested `url` attribute was marked
+`Computed` so the field could not be written from HCL, and even
+when applied via a workaround the change updated only the Waldur
+instance record — not the underlying Neutron port, which is what
+actually enforces traffic.
 
-## Resources
+This fork makes the nested attributes writable, dispatches the
+`update_security_groups` action after order completion, and
+includes a `CascadeInstanceSecurityGroupsToPorts` helper that
+walks the new instance's ports and pushes the security groups
+(plus the tenant's `default` group) at the port level. Result: a
+single `terraform apply` produces an SSH-reachable VM with no
+manual web-UI step.
 
-| Name | Description |
-|------|-------------|
-| `waldur_openstack_instance` | Create OpenStack VMs via marketplace |
-
-## Examples
-
-See the [examples](./examples/) folder for complete working examples:
-
-- [basic-vm](./examples/basic-vm/) - Simple VM creation
-- [complete](./examples/complete/) - Full example with all data sources
-
-## Finding UUIDs
-
-Use the Waldur API to find required UUIDs:
-
-```bash
-# Set your token
-export TOKEN="your-api-token"
-export WALDUR="https://your-waldur-instance.com"
-
-# List your projects
-curl -H "Authorization: Token $TOKEN" "$WALDUR/api/projects/"
-
-# Get tenant UUID (after you have project UUID)
-curl -H "Authorization: Token $TOKEN" "$WALDUR/api/openstack-tenants/?project_uuid=PROJECT_UUID"
-
-# List offerings (needed for VM creation)
-curl -H "Authorization: Token $TOKEN" "$WALDUR/api/marketplace-public-offerings/?type=OpenStack.Instance"
-
-# List subnets (after you have tenant UUID)
-curl -H "Authorization: Token $TOKEN" "$WALDUR/api/openstack-subnets/?tenant_uuid=TENANT_UUID"
-
-# List volume types
-curl -H "Authorization: Token $TOKEN" "$WALDUR/api/openstack-volume-types/?tenant_uuid=TENANT_UUID"
-
-# List your SSH keys
-curl -H "Authorization: Token $TOKEN" "$WALDUR/api/keys/"
+```hcl
+resource "waldur_openstack_instance" "vm" {
+  # ...
+  security_groups = [
+    { url = data.waldur_openstack_security_group.ssh.url },
+    { url = data.waldur_openstack_security_group.web.url },
+  ]
+}
 ```
 
-## Known Issues
+### 3. In-place flavour change instead of destroy-and-recreate
 
-After `terraform apply`, you may see errors about "unknown values" for some fields (like `access_url`, `hypervisor_hostname`). These are cosmetic - the VM is still created successfully. Check with `terraform state show` or in the Waldur UI.
+Upstream marks `flavor` as `ForceNew`, so editing it in HCL
+destroys the VM and creates a new one — losing the floating IP,
+the boot volume, and any state on disk. The Waldur API has a
+`change_flavor` action; this fork wires it up.
 
-## License
+The included `ChangeInstanceFlavorWithStopStart` helper handles
+the multi-step ceremony Waldur requires (snapshot security groups,
+stop instance, change flavour, wait, start, restore snapshot).
+Resizing is now a normal `terraform apply` away.
 
-MIT License
+## Provider configuration
 
-## Contributing
+| Argument | Description |
+|---|---|
+| `endpoint` | Waldur API base URL (e.g. `https://minu.etais.ee`) |
+| `token` | API token issued from your Waldur user profile |
 
-Contributions are welcome! Please open an issue or pull request on [GitHub](https://github.com/siimrebane/terraform-provider-waldur).
+## Status
+
+| Fix | Status |
+|---|---|
+| `future_prices` deserialisation | Implemented, verified end-to-end against ETAIS |
+| Security-group cascade | Implemented, verified end-to-end against ETAIS |
+| In-place flavour change | Implemented, verified end-to-end against ETAIS (`start_time` consistency follow-up noted) |
+
+## Source generator
+
+The provider is generated by a fork of the official Waldur
+generator at
+[`siimrebane/terraform-provider-waldur-generator`](https://github.com/siimrebane/terraform-provider-waldur-generator).
+Each fix lives on its own branch (`fix/future-prices-string-or-number`,
+`fix/security-groups-post-create`,
+`fix/instance-change-flavor-in-place`) ready for upstream PR;
+a `release` branch combines them.
+
+## Licence
+
+MIT — see [LICENSE](LICENSE).

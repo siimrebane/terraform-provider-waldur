@@ -21,8 +21,9 @@ type Client struct {
 
 // Config holds the client configuration
 type Config struct {
-	Endpoint string
-	Token    string
+	Endpoint   string
+	Token      string
+	HTTPClient *http.Client // Optional: for testing with VCR or custom transport
 }
 
 // NewClient creates a new Waldur API client
@@ -40,21 +41,30 @@ func NewClient(config *Config) (*Client, error) {
 		return nil, fmt.Errorf("invalid endpoint URL: %w", err)
 	}
 
-	return &Client{
-		baseURL: baseURL.String(),
-		token:   config.Token,
-		httpClient: &http.Client{
+	// Use provided HTTP client or create default one
+	httpClient := config.HTTPClient
+	if httpClient == nil {
+		httpClient = &http.Client{
 			Timeout: 30 * time.Second,
-		},
+		}
+	}
+
+	return &Client{
+		baseURL:    baseURL.String(),
+		token:      config.Token,
+		httpClient: httpClient,
 	}, nil
 }
 
 // doRequest performs an HTTP request with authentication
 func (c *Client) doRequest(ctx context.Context, method, path string, body interface{}) (*http.Response, error) {
-	// Construct full URL
-	fullURL := c.baseURL + path
+	// Construct full URL, avoiding double slashes and double 'api' segments
+	baseURL := strings.TrimSuffix(c.baseURL, "/")
+	if strings.HasSuffix(baseURL, "/api") && strings.HasPrefix(path, "/api/") {
+		baseURL = strings.TrimSuffix(baseURL, "/api")
+	}
+	fullURL := baseURL + path
 
-	// Prepare request body
 	var reqBody io.Reader
 	if body != nil {
 		jsonData, err := json.Marshal(body)
@@ -84,8 +94,8 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body interf
 	return resp, nil
 }
 
-// Get performs a GET request
-func (c *Client) Get(ctx context.Context, path string, result interface{}) error {
+// GetURL performs a GET request
+func (c *Client) GetURL(ctx context.Context, path string, result interface{}) error {
 	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return err
@@ -147,8 +157,8 @@ func (c *Client) Patch(ctx context.Context, path string, body interface{}, resul
 	return nil
 }
 
-// Delete performs a DELETE request
-func (c *Client) Delete(ctx context.Context, path string) error {
+// DeleteURL performs a DELETE request
+func (c *Client) DeleteURL(ctx context.Context, path string) error {
 	resp, err := c.doRequest(ctx, http.MethodDelete, path, nil)
 	if err != nil {
 		return err
@@ -180,13 +190,8 @@ func (c *Client) checkResponse(resp *http.Response) error {
 	return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(bodyBytes))
 }
 
-// List performs a GET request for a list of resources
-func (c *Client) List(ctx context.Context, path string, result interface{}) error {
-	return c.Get(ctx, path, result)
-}
-
-// ListWithFilter performs a GET request with query parameters for filtering
-func (c *Client) ListWithFilter(ctx context.Context, path string, filters map[string]string, result interface{}) error {
+// List performs a GET request with query parameters for filtering
+func (c *Client) List(ctx context.Context, path string, filters map[string]string, result interface{}) error {
 	// Build query string from filters
 	if len(filters) > 0 {
 		query := url.Values{}
@@ -195,23 +200,18 @@ func (c *Client) ListWithFilter(ctx context.Context, path string, filters map[st
 		}
 		path = path + "?" + query.Encode()
 	}
-	return c.Get(ctx, path, result)
+	return c.GetURL(ctx, path, result)
 }
 
-// GetByUUID retrieves a single resource by UUID
-func (c *Client) GetByUUID(ctx context.Context, path string, uuid string, result interface{}) error {
+// Get retrieves a single resource by UUID
+func (c *Client) Get(ctx context.Context, path string, uuid string, result interface{}) error {
 	// Replace {uuid} placeholder in path, or append if not present
 	fullPath := strings.Replace(path, "{uuid}", uuid, 1)
 	// Ensure trailing slash
 	if !strings.HasSuffix(fullPath, "/") {
 		fullPath += "/"
 	}
-	return c.Get(ctx, fullPath, result)
-}
-
-// Create creates a new resource
-func (c *Client) Create(ctx context.Context, path string, body interface{}, result interface{}) error {
-	return c.Post(ctx, path, body, result)
+	return c.GetURL(ctx, fullPath, result)
 }
 
 // Update updates a resource
@@ -225,13 +225,19 @@ func (c *Client) Update(ctx context.Context, path string, uuid string, body inte
 	return c.Patch(ctx, fullPath, body, result)
 }
 
-// DeleteByUUID deletes a resource by UUID
-func (c *Client) DeleteByUUID(ctx context.Context, path string, uuid string) error {
+// Delete deletes a resource by UUID
+func (c *Client) Delete(ctx context.Context, path string, uuid string) error {
 	// Replace {uuid} placeholder in path, or append if not present
 	fullPath := strings.Replace(path, "{uuid}", uuid, 1)
 	// Ensure trailing slash
 	if !strings.HasSuffix(fullPath, "/") {
 		fullPath += "/"
 	}
-	return c.Delete(ctx, fullPath)
+	return c.DeleteURL(ctx, fullPath)
+}
+
+// ExecuteAction executes an action on a resource
+func (c *Client) ExecuteAction(ctx context.Context, pathTemplate string, uuid string, body interface{}, result interface{}) error {
+	path := strings.Replace(pathTemplate, "{uuid}", uuid, 1)
+	return c.Post(ctx, path, body, result)
 }

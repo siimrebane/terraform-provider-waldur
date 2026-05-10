@@ -1,0 +1,137 @@
+package volume_type
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+
+	"github.com/waldur/terraform-provider-waldur/internal/sdk/common"
+)
+
+// Ensure provider defined types fully satisfy framework interfaces.
+var _ datasource.DataSource = &OpenstackVolumeTypeDataSource{}
+
+func NewOpenstackVolumeTypeDataSource() datasource.DataSource {
+	return &OpenstackVolumeTypeDataSource{}
+}
+
+type OpenstackVolumeTypeDataSource struct {
+	client *OpenstackVolumeTypeClient
+}
+
+type OpenstackVolumeTypeDataSourceModel struct {
+	OpenstackVolumeTypeModel
+	Filters *OpenstackVolumeTypeFiltersModel `tfsdk:"filters"`
+}
+
+func (d *OpenstackVolumeTypeDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_openstack_volume_type"
+}
+
+func (d *OpenstackVolumeTypeDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Openstack Volume Type data source - lookup by name or UUID",
+
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				MarkdownDescription: "Openstack Volume Type UUID",
+			},
+			"filters": (&OpenstackVolumeTypeFiltersModel{}).GetSchema(),
+			"description": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Description"},
+			"name": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Name"},
+			"settings": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Settings"},
+			"url": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Url"},
+		},
+	}
+}
+
+func (d *OpenstackVolumeTypeDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	// Prevent panic if the provider has not been configured.
+	if req.ProviderData == nil {
+		return
+	}
+
+	d.client = &OpenstackVolumeTypeClient{}
+	if err := d.client.Configure(ctx, req.ProviderData); err != nil {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			err.Error(),
+		)
+		return
+	}
+}
+
+func (d *OpenstackVolumeTypeDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data OpenstackVolumeTypeDataSourceModel
+
+	// Read Terraform configuration data into the model
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Check if UUID is provided for direct lookup
+	if !data.UUID.IsNull() && data.UUID.ValueString() != "" {
+		apiResp, err := d.client.Get(ctx, data.UUID.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Unable to Read Openstack Volume Type",
+				"An error occurred while reading the Openstack Volume Type by UUID: "+err.Error(),
+			)
+			return
+		}
+
+		resp.Diagnostics.Append(data.CopyFrom(ctx, *apiResp)...)
+
+	} else {
+		filters := common.BuildQueryFilters(data.Filters)
+
+		if len(filters) == 0 {
+			resp.Diagnostics.AddError(
+				"Missing Filter Parameters",
+				"At least one filter parameter (or 'id') must be provided to lookup openstack_volume_type.",
+			)
+			return
+		}
+
+		results, err := d.client.List(ctx, filters)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Unable to List Openstack Volume Type",
+				"An error occurred while filtering Openstack Volume Type: "+err.Error(),
+			)
+			return
+		}
+
+		// Check results
+		if len(results) == 0 {
+			resp.Diagnostics.AddError(
+				"Openstack Volume Type Not Found",
+				"No Openstack Volume Type found with provided filters.",
+			)
+			return
+		}
+
+		if len(results) > 1 {
+			resp.Diagnostics.AddError(
+				"Multiple Openstack Volume Types Found",
+				fmt.Sprintf("Found %d Openstack Volume Types with provided filters. Please use more specific filters or lookup by UUID.", len(results)),
+			)
+			return
+		}
+
+		resp.Diagnostics.Append(data.CopyFrom(ctx, results[0])...)
+	}
+
+	// Save data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}

@@ -1,0 +1,68 @@
+package volume_attachment
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/waldur/terraform-provider-waldur/internal/client"
+	"github.com/waldur/terraform-provider-waldur/internal/sdk/common"
+)
+
+type OpenstackVolumeAttachmentClient struct {
+	Client *client.Client
+}
+
+func NewOpenstackVolumeAttachmentClient(c *client.Client) *OpenstackVolumeAttachmentClient {
+	return &OpenstackVolumeAttachmentClient{Client: c}
+}
+
+func (c *OpenstackVolumeAttachmentClient) Configure(ctx context.Context, providerData interface{}) error {
+	if providerData == nil {
+		return nil
+	}
+
+	raw, ok := providerData.(*client.Client)
+	if !ok {
+		return fmt.Errorf("unexpected provider data type: %T", providerData)
+	}
+
+	c.Client = raw
+	return nil
+}
+
+func IsNotFoundError(err error) bool {
+	return common.IsNotFoundError(err)
+}
+
+func (c *OpenstackVolumeAttachmentClient) Get(ctx context.Context, id string) (*OpenstackVolumeAttachmentResponse, error) {
+	var apiResp OpenstackVolumeAttachmentResponse
+	err := c.Client.Get(ctx, "/api/openstack-volumes/{uuid}/", id, &apiResp)
+	if err != nil {
+		return nil, err
+	}
+	return &apiResp, nil
+}
+
+func (c *OpenstackVolumeAttachmentClient) List(ctx context.Context, filter map[string]string) ([]OpenstackVolumeAttachmentResponse, error) {
+	var listResult []OpenstackVolumeAttachmentResponse
+	err := c.Client.List(ctx, "/api/openstack-volumes/", filter, &listResult)
+	if err != nil {
+		return nil, err
+	}
+	return listResult, nil
+}
+
+func (c *OpenstackVolumeAttachmentClient) Link(ctx context.Context, req *OpenstackVolumeAttachmentCreateRequest) (*OpenstackVolumeAttachmentResponse, error) {
+	sourceUUID := *req.Volume
+
+	var apiResp OpenstackVolumeAttachmentResponse
+	err := c.Client.ExecuteAction(ctx, "/api/openstack-volumes/{uuid}/attach/", sourceUUID, req, &apiResp)
+	if err != nil {
+		return nil, err
+	}
+	return &apiResp, nil
+}
+func (c *OpenstackVolumeAttachmentClient) Unlink(ctx context.Context, sourceUUID string) error {
+	err := c.Client.ExecuteAction(ctx, "/api/openstack-volumes/{uuid}/detach/", sourceUUID, nil, nil)
+	return err
+}

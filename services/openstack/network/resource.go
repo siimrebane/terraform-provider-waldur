@@ -1,0 +1,595 @@
+package network
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/waldur/terraform-provider-waldur/internal/sdk/common"
+)
+
+// Ensure provider defined types fully satisfy framework interfaces.
+var _ resource.Resource = &OpenstackNetworkResource{}
+var _ resource.ResourceWithImportState = &OpenstackNetworkResource{}
+
+func NewOpenstackNetworkResource() resource.Resource {
+	return &OpenstackNetworkResource{}
+}
+
+// OpenstackNetworkResource defines the resource implementation.
+type OpenstackNetworkResource struct {
+	client *OpenstackNetworkClient
+}
+
+// OpenstackNetworkResourceModel describes the resource data model.
+type OpenstackNetworkResourceModel struct {
+	OpenstackNetworkModel
+	Timeouts timeouts.Value `tfsdk:"timeouts"`
+}
+
+func (r *OpenstackNetworkResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_openstack_network"
+}
+
+func (r *OpenstackNetworkResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Openstack Network resource",
+
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Openstack Network UUID (used as Terraform ID)",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"backend_id": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Backend Id"},
+			"customer": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Customer"},
+			"description": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Description"},
+			"error_message": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Error Message"},
+			"is_external": schema.BoolAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.Bool{
+
+					boolplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Defines whether this network is external (public) or internal (private)"},
+			"marketplace_resource_uuid": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Marketplace Resource Uuid"},
+			"mtu": schema.Int64Attribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.Int64{
+
+					int64planmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "The maximum transmission unit (MTU) value to address fragmentation."},
+			"name": schema.StringAttribute{
+				Required: true, MarkdownDescription: "Name"},
+			"project": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Project"},
+			"rbac_policies": schema.ListNestedAttribute{
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"backend_id": schema.StringAttribute{
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Backend Id"},
+						"network": schema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Network"},
+						"network_name": schema.StringAttribute{
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Network Name"},
+						"policy_type": schema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Type of access granted - either shared access or external network access"},
+						"target_tenant": schema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Target Tenant"},
+						"target_tenant_name": schema.StringAttribute{
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Target Tenant Name"},
+						"url": schema.StringAttribute{
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Url"},
+						"uuid": schema.StringAttribute{
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Uuid"},
+					},
+				},
+				Computed: true,
+				PlanModifiers: []planmodifier.List{
+
+					listplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Rbac Policies",
+			},
+			"resource_type": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Resource Type"},
+			"segmentation_id": schema.Int64Attribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.Int64{
+
+					int64planmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "VLAN ID for VLAN networks or tunnel ID for VXLAN/GRE networks"},
+			"state": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "State"},
+			"subnets": schema.ListNestedAttribute{
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"allocation_pools": schema.ListNestedAttribute{
+							NestedObject: schema.NestedAttributeObject{
+								Attributes: map[string]schema.Attribute{
+									"end": schema.StringAttribute{
+										Optional: true,
+										Computed: true,
+										PlanModifiers: []planmodifier.String{
+
+											stringplanmodifier.UseStateForUnknown(),
+										}, MarkdownDescription: "An IPv4 or IPv6 address."},
+									"start": schema.StringAttribute{
+										Optional: true,
+										Computed: true,
+										PlanModifiers: []planmodifier.String{
+
+											stringplanmodifier.UseStateForUnknown(),
+										}, MarkdownDescription: "An IPv4 or IPv6 address."},
+								},
+							},
+							Computed: true,
+							PlanModifiers: []planmodifier.List{
+
+								listplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Allocation Pools",
+						},
+						"cidr": schema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "IPv4 network address in CIDR format (e.g. 192.168.0.0/24)"},
+						"description": schema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Description"},
+						"enable_dhcp": schema.BoolAttribute{
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.Bool{
+
+								boolplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "If True, DHCP service will be enabled on this subnet"},
+						"gateway_ip": schema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "IP address of the gateway for this subnet"},
+						"ip_version": schema.Int64Attribute{
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.Int64{
+
+								int64planmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "IP protocol version (4 or 6)",
+							Validators: []validator.Int64{
+								int64validator.AtLeast(-32768),
+								int64validator.AtMost(32767),
+							}},
+						"name": schema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Name"},
+						"uuid": schema.StringAttribute{
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Uuid"},
+					},
+				},
+				Computed: true,
+				PlanModifiers: []planmodifier.List{
+
+					listplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Subnets",
+			},
+			"tenant": schema.StringAttribute{
+				Required: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.RequiresReplace(),
+				}, MarkdownDescription: "OpenStack tenant this network belongs to"},
+			"tenant_name": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Tenant Name"},
+			"tenant_uuid": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Tenant Uuid"},
+			"type": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Network type, such as local, flat, vlan, vxlan, or gre"},
+			"url": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Url"},
+		},
+
+		Blocks: map[string]schema.Block{
+			"timeouts": timeouts.Block(ctx, timeouts.Opts{
+				Create: true,
+				Update: true,
+				Delete: true,
+			}),
+		},
+	}
+}
+
+func (r *OpenstackNetworkResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	// Prevent panic if the provider has not been configured.
+	if req.ProviderData == nil {
+		return
+	}
+
+	r.client = &OpenstackNetworkClient{}
+	if err := r.client.Configure(ctx, req.ProviderData); err != nil {
+		resp.Diagnostics.AddError(
+			"Unexpected Resource Configure Type",
+			err.Error(),
+		)
+		return
+	}
+}
+
+func (r *OpenstackNetworkResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+
+	var data OpenstackNetworkResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	requestBody := OpenstackNetworkCreateRequest{}
+	if !data.Description.IsNull() && !data.Description.IsUnknown() {
+
+		requestBody.Description = data.Description.ValueStringPointer()
+	}
+
+	requestBody.Name = data.Name.ValueStringPointer()
+
+	apiResp, err := r.client.Create(ctx, data.Tenant.ValueString(), &requestBody)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to Create Openstack Network",
+			"An error occurred while creating the Openstack Network: "+err.Error(),
+		)
+		return
+	}
+	data.UUID = types.StringPointerValue(apiResp.UUID)
+	createTimeout, diags := data.Timeouts.Create(ctx, common.DefaultCreateTimeout)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	newResp, err := common.WaitForResource(ctx, func(ctx context.Context) (*OpenstackNetworkResponse, error) {
+		return r.client.Get(ctx, data.UUID.ValueString())
+	}, createTimeout)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to wait for resource creation", err.Error())
+		return
+	}
+	apiResp = newResp
+	if !data.Mtu.IsNull() && !data.Mtu.IsUnknown() {
+		// Post-create: apply action-backed field set in plan via RPC action.
+		var postCreateReqSetMtu OpenstackNetworkSetMtuActionRequest
+		postCreateReqSetMtu.Mtu = data.Mtu.ValueInt64Pointer()
+
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		if actionErr := r.client.SetMtu(ctx, data.UUID.ValueString(), &postCreateReqSetMtu); actionErr != nil {
+			resp.Diagnostics.AddError(
+				"RPC Action Failed on Create: set_mtu",
+				"An error occurred while applying set_mtu after create: "+actionErr.Error(),
+			)
+			return
+		}
+		if _, waitErr := common.WaitForResource(ctx, func(ctx context.Context) (*OpenstackNetworkResponse, error) {
+			return r.client.Get(ctx, data.UUID.ValueString())
+		}, createTimeout); waitErr != nil {
+			resp.Diagnostics.AddError(
+				"Wait for post-create action failed: set_mtu",
+				waitErr.Error(),
+			)
+			return
+		}
+	}
+	// Refresh resource state after any post-create actions so that the
+	// Terraform state reflects fields applied via RPC actions.
+	if refreshedResp, refreshErr := r.client.Get(ctx, data.UUID.ValueString()); refreshErr == nil {
+		apiResp = refreshedResp
+	}
+
+	resp.Diagnostics.Append(data.CopyFrom(ctx, *apiResp)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *OpenstackNetworkResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data OpenstackNetworkResourceModel
+
+	// Read Terraform prior state data into the model
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Call Waldur API to read resource
+
+	apiResp, err := r.client.Get(ctx, data.UUID.ValueString())
+	if err != nil {
+		if IsNotFoundError(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+
+		resp.Diagnostics.AddError(
+			"Unable to Read Openstack Network",
+			"An error occurred while reading the Openstack Network: "+err.Error(),
+		)
+		return
+	}
+
+	resp.Diagnostics.Append(data.CopyFrom(ctx, *apiResp)...)
+
+	// Save updated data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *OpenstackNetworkResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+
+	var data OpenstackNetworkResourceModel
+	var state OpenstackNetworkResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	var apiResp *OpenstackNetworkResponse
+	updateTimeout, diags := data.Timeouts.Update(ctx, common.DefaultUpdateTimeout)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	_ = updateTimeout
+	anyChanges := false
+	requestBody := OpenstackNetworkUpdateRequest{}
+	if !data.Description.IsNull() && !data.Description.IsUnknown() && !data.Description.Equal(state.Description) {
+		anyChanges = true
+
+		requestBody.Description = data.Description.ValueStringPointer()
+	}
+	if !data.Name.IsNull() && !data.Name.IsUnknown() && !data.Name.Equal(state.Name) {
+		anyChanges = true
+
+		requestBody.Name = data.Name.ValueStringPointer()
+	}
+
+	if anyChanges {
+		var err error
+		apiResp, err = r.client.Update(ctx, data.UUID.ValueString(), &requestBody)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Unable to Update Openstack Network",
+				"An error occurred while updating the Openstack Network: "+err.Error(),
+			)
+			return
+		}
+		// Wait for the resource to return to OK state
+		newResp, err := common.WaitForResource(ctx, func(ctx context.Context) (*OpenstackNetworkResponse, error) {
+			return r.client.Get(ctx, data.UUID.ValueString())
+		}, updateTimeout)
+		if err != nil {
+			resp.Diagnostics.AddError("Wait for update failed", err.Error())
+			return
+		}
+		apiResp = newResp
+	}
+	if !data.Mtu.Equal(state.Mtu) {
+		// Convert Terraform value to API payload for the specific action
+		var req OpenstackNetworkSetMtuActionRequest
+		req.Mtu = data.Mtu.ValueInt64Pointer()
+
+		// Execute the Action
+		if err := r.client.SetMtu(ctx, data.UUID.ValueString(), &req); err != nil {
+			resp.Diagnostics.AddError("RPC Action Failed: set_mtu", err.Error())
+			return
+		}
+		// Wait for the resource to return to OK state
+		_, err := common.WaitForResource(ctx, func(ctx context.Context) (*OpenstackNetworkResponse, error) {
+			return r.client.Get(ctx, data.UUID.ValueString())
+		}, updateTimeout)
+		if err != nil {
+			resp.Diagnostics.AddError("Wait for RPC action failed", err.Error())
+			return
+		}
+		state = data
+	}
+
+	newResp, err := r.client.Get(ctx, data.UUID.ValueString())
+	if err != nil {
+		if IsNotFoundError(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Failed to Read Resource After Update", err.Error())
+		return
+	}
+	apiResp = newResp
+
+	resp.Diagnostics.Append(data.CopyFrom(ctx, *apiResp)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *OpenstackNetworkResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+
+	var data OpenstackNetworkResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	err := r.client.Delete(ctx, data.UUID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to Delete Openstack Network",
+			"An error occurred while deleting the Openstack Network: "+err.Error(),
+		)
+		return
+	}
+	deleteTimeout, diags := data.Timeouts.Delete(ctx, common.DefaultDeleteTimeout)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	err = common.WaitForDeletion(ctx, func(ctx context.Context) (*OpenstackNetworkResponse, error) {
+		return r.client.Get(ctx, data.UUID.ValueString())
+	}, deleteTimeout)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to wait for resource deletion", err.Error())
+		return
+	}
+}
+
+func (r *OpenstackNetworkResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+
+	uuid := req.ID
+	if uuid == "" {
+		resp.Diagnostics.AddError(
+			"Invalid Import ID",
+			"Import ID cannot be empty. Please provide the UUID of the Openstack Network.",
+		)
+		return
+	}
+
+	tflog.Info(ctx, "Importing Openstack Network", map[string]interface{}{
+		"uuid": uuid,
+	})
+
+	apiResp, err := r.client.Get(ctx, uuid)
+	if err != nil {
+		if IsNotFoundError(err) {
+			resp.Diagnostics.AddError(
+				"Resource Not Found",
+				fmt.Sprintf("Openstack Network with UUID '%s' does not exist or is not accessible.", uuid),
+			)
+			return
+		}
+		resp.Diagnostics.AddError(
+			"Unable to Import Openstack Network",
+			fmt.Sprintf("An error occurred while fetching the Openstack Network: %s", err.Error()),
+		)
+		return
+	}
+
+	var data OpenstackNetworkResourceModel
+	resp.Diagnostics.Append(data.CopyFrom(ctx, *apiResp)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}

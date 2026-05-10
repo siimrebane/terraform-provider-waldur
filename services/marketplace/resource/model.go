@@ -1,0 +1,550 @@
+package resource
+
+import (
+	"context"
+
+	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/waldur/terraform-provider-waldur/internal/sdk/common"
+)
+
+func NestedEndpointType() types.ObjectType {
+	return types.ObjectType{AttrTypes: map[string]attr.Type{
+		"name": types.StringType,
+		"url":  types.StringType,
+		"uuid": types.StringType,
+	}}
+}
+func OfferingComponentType() types.ObjectType {
+	return types.ObjectType{AttrTypes: map[string]attr.Type{
+		"article_code":         types.StringType,
+		"billing_type":         types.StringType,
+		"default_limit":        types.Int64Type,
+		"description":          types.StringType,
+		"factor":               types.Int64Type,
+		"is_boolean":           types.BoolType,
+		"is_builtin":           types.BoolType,
+		"is_prepaid":           types.BoolType,
+		"limit_amount":         types.Int64Type,
+		"limit_period":         types.StringType,
+		"max_available_limit":  types.Int64Type,
+		"max_prepaid_duration": types.Int64Type,
+		"max_value":            types.Int64Type,
+		"measured_unit":        types.StringType,
+		"min_prepaid_duration": types.Int64Type,
+		"min_value":            types.Int64Type,
+		"name":                 types.StringType,
+		"overage_component":    types.StringType,
+		"type":                 types.StringType,
+		"unit_factor":          types.Int64Type,
+		"uuid":                 types.StringType,
+	}}
+}
+func OrderInProgressType() types.ObjectType {
+	return types.ObjectType{AttrTypes: map[string]attr.Type{
+		"activation_price":               types.Float64Type,
+		"attachment":                     types.StringType,
+		"backend_id":                     types.StringType,
+		"callback_url":                   types.StringType,
+		"can_terminate":                  types.BoolType,
+		"category_icon":                  types.StringType,
+		"category_uuid":                  types.StringType,
+		"completed_at":                   types.StringType,
+		"consumer_reviewed_at":           types.StringType,
+		"consumer_reviewed_by":           types.StringType,
+		"consumer_reviewed_by_full_name": types.StringType,
+		"consumer_reviewed_by_username":  types.StringType,
+		"cost":                           types.StringType,
+		"created_by_civil_number":        types.StringType,
+		"created_by_full_name":           types.StringType,
+		"created_by_username":            types.StringType,
+		"customer_slug":                  types.StringType,
+		"error_message":                  types.StringType,
+		"fixed_price":                    types.Float64Type,
+		"issue":                          OrderInProgressIssueType(),
+		"limits":                         types.MapType{ElemType: types.Int64Type},
+		"marketplace_resource_uuid":      types.StringType,
+		"new_cost_estimate":              types.StringType,
+		"new_plan_name":                  types.StringType,
+		"new_plan_uuid":                  types.StringType,
+		"offering":                       types.StringType,
+		"offering_billable":              types.BoolType,
+		"offering_description":           types.StringType,
+		"offering_image":                 types.StringType,
+		"offering_shared":                types.BoolType,
+		"offering_thumbnail":             types.StringType,
+		"offering_type":                  types.StringType,
+		"offering_uuid":                  types.StringType,
+		"old_cost_estimate":              types.Float64Type,
+		"old_plan_name":                  types.StringType,
+		"old_plan_uuid":                  types.StringType,
+		"order_subtype":                  types.StringType,
+		"output":                         types.StringType,
+		"plan":                           types.StringType,
+		"plan_description":               types.StringType,
+		"plan_name":                      types.StringType,
+		"plan_unit":                      types.StringType,
+		"plan_uuid":                      types.StringType,
+		"project_description":            types.StringType,
+		"project_slug":                   types.StringType,
+		"provider_name":                  types.StringType,
+		"provider_reviewed_at":           types.StringType,
+		"provider_reviewed_by":           types.StringType,
+		"provider_reviewed_by_full_name": types.StringType,
+		"provider_reviewed_by_username":  types.StringType,
+		"provider_slug":                  types.StringType,
+		"provider_uuid":                  types.StringType,
+		"request_comment":                types.StringType,
+		"resource_name":                  types.StringType,
+		"resource_type":                  types.StringType,
+		"resource_uuid":                  types.StringType,
+		"slug":                           types.StringType,
+		"start_date":                     types.StringType,
+		"state":                          types.StringType,
+		"termination_comment":            types.StringType,
+		"type":                           types.StringType,
+		"url":                            types.StringType,
+		"uuid":                           types.StringType,
+	}}
+}
+func OrderInProgressIssueType() types.ObjectType {
+	return types.ObjectType{AttrTypes: map[string]attr.Type{
+		"key":  types.StringType,
+		"uuid": types.StringType,
+	}}
+}
+func ReportSectionType() types.ObjectType {
+	return types.ObjectType{AttrTypes: map[string]attr.Type{
+		"body":   types.StringType,
+		"header": types.StringType,
+	}}
+}
+
+type MarketplaceResourceFiltersModel struct {
+	BackendId            types.String  `tfsdk:"backend_id"`
+	CategoryUuid         types.String  `tfsdk:"category_uuid"`
+	ComponentCount       types.Float64 `tfsdk:"component_count"`
+	Created              types.String  `tfsdk:"created"`
+	Customer             types.String  `tfsdk:"customer"`
+	CustomerUuid         types.String  `tfsdk:"customer_uuid"`
+	Downscaled           types.Bool    `tfsdk:"downscaled"`
+	HasTerminateDate     types.Bool    `tfsdk:"has_terminate_date"`
+	IsAttached           types.Bool    `tfsdk:"is_attached"`
+	LexisLinksSupported  types.Bool    `tfsdk:"lexis_links_supported"`
+	LimitBased           types.Bool    `tfsdk:"limit_based"`
+	LimitComponentCount  types.Float64 `tfsdk:"limit_component_count"`
+	Modified             types.String  `tfsdk:"modified"`
+	Name                 types.String  `tfsdk:"name"`
+	NameExact            types.String  `tfsdk:"name_exact"`
+	Offering             types.String  `tfsdk:"offering"`
+	OfferingBillable     types.Bool    `tfsdk:"offering_billable"`
+	OfferingShared       types.Bool    `tfsdk:"offering_shared"`
+	OfferingType         types.String  `tfsdk:"offering_type"`
+	OnlyLimitBased       types.Bool    `tfsdk:"only_limit_based"`
+	OnlyUsageBased       types.Bool    `tfsdk:"only_usage_based"`
+	ParentOfferingUuid   types.String  `tfsdk:"parent_offering_uuid"`
+	Paused               types.Bool    `tfsdk:"paused"`
+	PlanUuid             types.String  `tfsdk:"plan_uuid"`
+	ProjectName          types.String  `tfsdk:"project_name"`
+	ProjectUuid          types.String  `tfsdk:"project_uuid"`
+	ProviderUuid         types.String  `tfsdk:"provider_uuid"`
+	Query                types.String  `tfsdk:"query"`
+	RestrictMemberAccess types.Bool    `tfsdk:"restrict_member_access"`
+	RuntimeState         types.String  `tfsdk:"runtime_state"`
+	ServiceManagerUuid   types.String  `tfsdk:"service_manager_uuid"`
+	UsageBased           types.Bool    `tfsdk:"usage_based"`
+	VisibleToProviders   types.Bool    `tfsdk:"visible_to_providers"`
+	VisibleToUsername    types.String  `tfsdk:"visible_to_username"`
+}
+
+func (m *MarketplaceResourceFiltersModel) GetSchema() schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		Optional:            true,
+		MarkdownDescription: "Filter parameters for querying Marketplace Resource",
+		Attributes: map[string]schema.Attribute{
+			"backend_id": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Backend ID",
+			},
+			"category_uuid": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Category UUID",
+			},
+			"component_count": schema.Float64Attribute{
+				Optional:            true,
+				MarkdownDescription: "Filter by exact number of components",
+			},
+			"created": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Created after",
+			},
+			"customer": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Customer URL",
+			},
+			"customer_uuid": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Customer UUID",
+			},
+			"downscaled": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "Downscaled",
+			},
+			"has_terminate_date": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "Has termination date",
+			},
+			"is_attached": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "Filter by attached state",
+			},
+			"lexis_links_supported": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "LEXIS links supported",
+			},
+			"limit_based": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "Filter by limit-based offerings",
+			},
+			"limit_component_count": schema.Float64Attribute{
+				Optional:            true,
+				MarkdownDescription: "Filter by exact number of limit-based components",
+			},
+			"modified": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Modified after",
+			},
+			"name": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Name",
+			},
+			"name_exact": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Name (exact)",
+			},
+			"offering": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Offering",
+			},
+			"offering_billable": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "Offering billable",
+			},
+			"offering_shared": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "Offering shared",
+			},
+			"offering_type": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Offering type",
+			},
+			"only_limit_based": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "Filter resources with only limit-based components",
+			},
+			"only_usage_based": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "Filter resources with only usage-based components",
+			},
+			"parent_offering_uuid": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "UUID of the parent offering",
+			},
+			"paused": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "Paused",
+			},
+			"plan_uuid": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Plan UUID",
+			},
+			"project_name": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Project name",
+			},
+			"project_uuid": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Project UUID",
+			},
+			"provider_uuid": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Provider UUID",
+			},
+			"query": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Search by resource UUID, name, slug, backend ID, effective ID, IPs or hypervisor",
+			},
+			"restrict_member_access": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "Restrict member access",
+			},
+			"runtime_state": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Runtime state",
+			},
+			"service_manager_uuid": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Service manager UUID",
+			},
+			"usage_based": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "Filter by usage-based offerings",
+			},
+			"visible_to_providers": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "Include only resources visible to service providers",
+			},
+			"visible_to_username": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Visible to username",
+			},
+		},
+	}
+}
+
+type MarketplaceResourceModel struct {
+	UUID                      types.String      `tfsdk:"id"`
+	Attributes                types.Map         `tfsdk:"attributes"`
+	BackendId                 types.String      `tfsdk:"backend_id"`
+	CanTerminate              types.Bool        `tfsdk:"can_terminate"`
+	CategoryIcon              types.String      `tfsdk:"category_icon"`
+	CategoryUuid              types.String      `tfsdk:"category_uuid"`
+	CustomerSlug              types.String      `tfsdk:"customer_slug"`
+	Description               types.String      `tfsdk:"description"`
+	Downscaled                types.Bool        `tfsdk:"downscaled"`
+	EffectiveId               types.String      `tfsdk:"effective_id"`
+	EndDate                   types.String      `tfsdk:"end_date"`
+	EndDateRequestedBy        types.String      `tfsdk:"end_date_requested_by"`
+	Endpoints                 types.List        `tfsdk:"endpoints"`
+	ErrorMessage              types.String      `tfsdk:"error_message"`
+	LastSync                  timetypes.RFC3339 `tfsdk:"last_sync"`
+	LimitUsage                types.Map         `tfsdk:"limit_usage"`
+	Limits                    types.Map         `tfsdk:"limits"`
+	Name                      types.String      `tfsdk:"name"`
+	Offering                  types.String      `tfsdk:"offering"`
+	OfferingBackendId         types.String      `tfsdk:"offering_backend_id"`
+	OfferingBillable          types.Bool        `tfsdk:"offering_billable"`
+	OfferingComponents        types.List        `tfsdk:"offering_components"`
+	OfferingDescription       types.String      `tfsdk:"offering_description"`
+	OfferingImage             types.String      `tfsdk:"offering_image"`
+	OfferingShared            types.Bool        `tfsdk:"offering_shared"`
+	OfferingSlug              types.String      `tfsdk:"offering_slug"`
+	OfferingState             types.String      `tfsdk:"offering_state"`
+	OfferingThumbnail         types.String      `tfsdk:"offering_thumbnail"`
+	OfferingType              types.String      `tfsdk:"offering_type"`
+	OfferingUuid              types.String      `tfsdk:"offering_uuid"`
+	OrderInProgress           types.Object      `tfsdk:"order_in_progress"`
+	ParentName                types.String      `tfsdk:"parent_name"`
+	ParentOfferingName        types.String      `tfsdk:"parent_offering_name"`
+	ParentOfferingSlug        types.String      `tfsdk:"parent_offering_slug"`
+	ParentOfferingUuid        types.String      `tfsdk:"parent_offering_uuid"`
+	ParentUuid                types.String      `tfsdk:"parent_uuid"`
+	Paused                    types.Bool        `tfsdk:"paused"`
+	Plan                      types.String      `tfsdk:"plan"`
+	PlanDescription           types.String      `tfsdk:"plan_description"`
+	PlanName                  types.String      `tfsdk:"plan_name"`
+	PlanUnit                  types.String      `tfsdk:"plan_unit"`
+	PlanUuid                  types.String      `tfsdk:"plan_uuid"`
+	Project                   types.String      `tfsdk:"project"`
+	ProjectDescription        types.String      `tfsdk:"project_description"`
+	ProjectEndDate            types.String      `tfsdk:"project_end_date"`
+	ProjectEndDateRequestedBy types.String      `tfsdk:"project_end_date_requested_by"`
+	ProjectSlug               types.String      `tfsdk:"project_slug"`
+	ProviderName              types.String      `tfsdk:"provider_name"`
+	ProviderSlug              types.String      `tfsdk:"provider_slug"`
+	ProviderUuid              types.String      `tfsdk:"provider_uuid"`
+	RenewalDate               types.Map         `tfsdk:"renewal_date"`
+	Report                    types.List        `tfsdk:"report"`
+	ResourceType              types.String      `tfsdk:"resource_type"`
+	ResourceUuid              types.String      `tfsdk:"resource_uuid"`
+	RestrictMemberAccess      types.Bool        `tfsdk:"restrict_member_access"`
+	Scope                     types.String      `tfsdk:"scope"`
+	Slug                      types.String      `tfsdk:"slug"`
+	State                     types.String      `tfsdk:"state"`
+	Url                       types.String      `tfsdk:"url"`
+	UserRequiresReconsent     types.Bool        `tfsdk:"user_requires_reconsent"`
+	Username                  types.String      `tfsdk:"username"`
+}
+
+// CopyFrom maps the API response to the model fields.
+func (model *MarketplaceResourceModel) CopyFrom(ctx context.Context, apiResp MarketplaceResourceResponse) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	model.UUID = types.StringPointerValue(apiResp.UUID)
+
+	if apiResp.Attributes != nil {
+		valAttributes, diagsAttributes := types.MapValueFrom(ctx, types.StringType, apiResp.Attributes)
+		diags.Append(diagsAttributes...)
+		model.Attributes = valAttributes
+	} else {
+		model.Attributes = types.MapNull(types.StringType)
+	}
+
+	model.BackendId = common.StringPointerValue(apiResp.BackendId)
+
+	model.CanTerminate = types.BoolPointerValue(apiResp.CanTerminate)
+
+	model.CategoryIcon = common.StringPointerValue(apiResp.CategoryIcon)
+
+	model.CategoryUuid = common.StringPointerValue(apiResp.CategoryUuid)
+
+	model.CustomerSlug = common.StringPointerValue(apiResp.CustomerSlug)
+
+	model.Description = common.StringPointerValue(apiResp.Description)
+
+	model.Downscaled = types.BoolPointerValue(apiResp.Downscaled)
+
+	model.EffectiveId = common.StringPointerValue(apiResp.EffectiveId)
+
+	model.EndDate = common.StringPointerValue(apiResp.EndDate)
+
+	model.EndDateRequestedBy = common.StringPointerValue(apiResp.EndDateRequestedBy)
+
+	if apiResp.Endpoints != nil {
+		valEndpoints, diagsEndpoints := types.ListValueFrom(ctx, NestedEndpointType(), apiResp.Endpoints)
+		diags.Append(diagsEndpoints...)
+		model.Endpoints = valEndpoints
+	} else {
+		model.Endpoints = types.ListNull(NestedEndpointType())
+	}
+
+	model.ErrorMessage = common.StringPointerValue(apiResp.ErrorMessage)
+
+	valLastSync, diagsLastSync := timetypes.NewRFC3339PointerValue(apiResp.LastSync)
+	diags.Append(diagsLastSync...)
+	model.LastSync = valLastSync
+
+	if apiResp.LimitUsage != nil {
+		valLimitUsage, diagsLimitUsage := types.MapValueFrom(ctx, types.Float64Type, apiResp.LimitUsage)
+		diags.Append(diagsLimitUsage...)
+		model.LimitUsage = valLimitUsage
+	} else {
+		model.LimitUsage = types.MapNull(types.Float64Type)
+	}
+
+	if apiResp.Limits != nil {
+		valLimits, diagsLimits := types.MapValueFrom(ctx, types.Int64Type, apiResp.Limits)
+		diags.Append(diagsLimits...)
+		model.Limits = valLimits
+	} else {
+		model.Limits = types.MapNull(types.Int64Type)
+	}
+
+	model.Name = common.StringPointerValue(apiResp.Name)
+
+	model.Offering = common.StringPointerValue(apiResp.Offering)
+
+	model.OfferingBackendId = common.StringPointerValue(apiResp.OfferingBackendId)
+
+	model.OfferingBillable = types.BoolPointerValue(apiResp.OfferingBillable)
+
+	if apiResp.OfferingComponents != nil {
+		valOfferingComponents, diagsOfferingComponents := types.ListValueFrom(ctx, OfferingComponentType(), apiResp.OfferingComponents)
+		diags.Append(diagsOfferingComponents...)
+		model.OfferingComponents = valOfferingComponents
+	} else {
+		model.OfferingComponents = types.ListNull(OfferingComponentType())
+	}
+
+	model.OfferingDescription = common.StringPointerValue(apiResp.OfferingDescription)
+
+	model.OfferingImage = common.StringPointerValue(apiResp.OfferingImage)
+
+	model.OfferingShared = types.BoolPointerValue(apiResp.OfferingShared)
+
+	model.OfferingSlug = common.StringPointerValue(apiResp.OfferingSlug)
+
+	model.OfferingState = common.StringPointerValue(apiResp.OfferingState)
+
+	model.OfferingThumbnail = common.StringPointerValue(apiResp.OfferingThumbnail)
+
+	model.OfferingType = common.StringPointerValue(apiResp.OfferingType)
+
+	model.OfferingUuid = common.StringPointerValue(apiResp.OfferingUuid)
+
+	if apiResp.OrderInProgress != nil {
+		valOrderInProgress, diagsOrderInProgress := types.ObjectValueFrom(ctx, OrderInProgressType().AttrTypes, *apiResp.OrderInProgress)
+		diags.Append(diagsOrderInProgress...)
+		model.OrderInProgress = valOrderInProgress
+	} else {
+		model.OrderInProgress = types.ObjectNull(OrderInProgressType().AttrTypes)
+	}
+
+	model.ParentName = common.StringPointerValue(apiResp.ParentName)
+
+	model.ParentOfferingName = common.StringPointerValue(apiResp.ParentOfferingName)
+
+	model.ParentOfferingSlug = common.StringPointerValue(apiResp.ParentOfferingSlug)
+
+	model.ParentOfferingUuid = common.StringPointerValue(apiResp.ParentOfferingUuid)
+
+	model.ParentUuid = common.StringPointerValue(apiResp.ParentUuid)
+
+	model.Paused = types.BoolPointerValue(apiResp.Paused)
+
+	model.Plan = common.StringPointerValue(apiResp.Plan)
+
+	model.PlanDescription = common.StringPointerValue(apiResp.PlanDescription)
+
+	model.PlanName = common.StringPointerValue(apiResp.PlanName)
+
+	model.PlanUnit = common.StringPointerValue(apiResp.PlanUnit)
+
+	model.PlanUuid = common.StringPointerValue(apiResp.PlanUuid)
+
+	model.Project = common.StringPointerValue(apiResp.Project)
+
+	model.ProjectDescription = common.StringPointerValue(apiResp.ProjectDescription)
+
+	model.ProjectEndDate = common.StringPointerValue(apiResp.ProjectEndDate)
+
+	model.ProjectEndDateRequestedBy = common.StringPointerValue(apiResp.ProjectEndDateRequestedBy)
+
+	model.ProjectSlug = common.StringPointerValue(apiResp.ProjectSlug)
+
+	model.ProviderName = common.StringPointerValue(apiResp.ProviderName)
+
+	model.ProviderSlug = common.StringPointerValue(apiResp.ProviderSlug)
+
+	model.ProviderUuid = common.StringPointerValue(apiResp.ProviderUuid)
+
+	if apiResp.RenewalDate != nil {
+		valRenewalDate, diagsRenewalDate := types.MapValueFrom(ctx, types.StringType, apiResp.RenewalDate)
+		diags.Append(diagsRenewalDate...)
+		model.RenewalDate = valRenewalDate
+	} else {
+		model.RenewalDate = types.MapNull(types.StringType)
+	}
+
+	if apiResp.Report != nil {
+		valReport, diagsReport := types.ListValueFrom(ctx, ReportSectionType(), apiResp.Report)
+		diags.Append(diagsReport...)
+		model.Report = valReport
+	} else {
+		model.Report = types.ListNull(ReportSectionType())
+	}
+
+	model.ResourceType = common.StringPointerValue(apiResp.ResourceType)
+
+	model.ResourceUuid = common.StringPointerValue(apiResp.ResourceUuid)
+
+	model.RestrictMemberAccess = types.BoolPointerValue(apiResp.RestrictMemberAccess)
+
+	model.Scope = common.StringPointerValue(apiResp.Scope)
+
+	model.Slug = common.StringPointerValue(apiResp.Slug)
+
+	model.State = common.StringPointerValue(apiResp.State)
+
+	model.Url = common.StringPointerValue(apiResp.Url)
+
+	model.UserRequiresReconsent = types.BoolPointerValue(apiResp.UserRequiresReconsent)
+
+	model.Username = common.StringPointerValue(apiResp.Username)
+
+	return diags
+}
