@@ -40,8 +40,18 @@ type OpenstackPortUpdateSecurityGroupsActionRequest struct {
 	SecurityGroups []common.OpenStackPortNestedSecurityGroupRequest `json:"-"`
 }
 
+// MarshalJSON builds the body the Waldur action expects: the port's
+// update_security_groups uses OpenStackInstanceSecurityGroupsUpdateSerializer,
+// which reads {"security_groups": ["<url>", ...]}. Elements without a url
+// are skipped.
 func (r OpenstackPortUpdateSecurityGroupsActionRequest) MarshalJSON() ([]byte, error) {
-	return json.Marshal(r.SecurityGroups)
+	urls := make([]string, 0, len(r.SecurityGroups))
+	for _, sg := range r.SecurityGroups {
+		if sg.Url != nil && *sg.Url != "" {
+			urls = append(urls, *sg.Url)
+		}
+	}
+	return json.Marshal(map[string]interface{}{"security_groups": urls})
 }
 
 type OpenstackPortResponse struct {

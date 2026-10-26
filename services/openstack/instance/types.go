@@ -80,24 +80,46 @@ type OpenstackInstanceUpdateFloatingIpsActionRequest struct {
 	FloatingIps []common.OpenStackCreateFloatingIPRequest `json:"-"`
 }
 
+// MarshalJSON wraps the list the way the Waldur action expects it:
+// OpenStackInstanceFloatingIPsUpdateSerializer reads {"floating_ips": [...]}.
 func (r OpenstackInstanceUpdateFloatingIpsActionRequest) MarshalJSON() ([]byte, error) {
-	return json.Marshal(r.FloatingIps)
+	ips := r.FloatingIps
+	if ips == nil {
+		ips = []common.OpenStackCreateFloatingIPRequest{}
+	}
+	return json.Marshal(map[string]interface{}{"floating_ips": ips})
 }
 
 type OpenstackInstanceUpdatePortsActionRequest struct {
 	Ports []common.OpenStackCreateInstancePortRequest `json:"-"`
 }
 
+// MarshalJSON wraps the list the way the Waldur action expects it:
+// OpenStackInstancePortsUpdateSerializer reads {"ports": [...]}.
 func (r OpenstackInstanceUpdatePortsActionRequest) MarshalJSON() ([]byte, error) {
-	return json.Marshal(r.Ports)
+	ports := r.Ports
+	if ports == nil {
+		ports = []common.OpenStackCreateInstancePortRequest{}
+	}
+	return json.Marshal(map[string]interface{}{"ports": ports})
 }
 
 type OpenstackInstanceUpdateSecurityGroupsActionRequest struct {
 	SecurityGroups []common.OpenStackSecurityGroupHyperlinkRequest `json:"-"`
 }
 
+// MarshalJSON builds the body the Waldur action expects:
+// OpenStackInstanceSecurityGroupsUpdateSerializer reads
+// {"security_groups": ["<url>", ...]}, a list of security-group URLs, not
+// of objects. Elements without a url are skipped.
 func (r OpenstackInstanceUpdateSecurityGroupsActionRequest) MarshalJSON() ([]byte, error) {
-	return json.Marshal(r.SecurityGroups)
+	urls := make([]string, 0, len(r.SecurityGroups))
+	for _, sg := range r.SecurityGroups {
+		if sg.Url != nil && *sg.Url != "" {
+			urls = append(urls, *sg.Url)
+		}
+	}
+	return json.Marshal(map[string]interface{}{"security_groups": urls})
 }
 
 type OpenstackInstanceResponse struct {
