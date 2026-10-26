@@ -1240,6 +1240,7 @@ func (r *OpenstackInstanceResource) Create(ctx context.Context, req resource.Cre
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	plannedSecurityGroups := data.SecurityGroups
 
 	// Phase 1: Payload Construction
 	// We map the Terraform schema fields to the 'attributes' map required by the Marketplace Order API.
@@ -1340,8 +1341,8 @@ func (r *OpenstackInstanceResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 	resp.Diagnostics.Append(data.CopyFrom(ctx, *apiResp)...)
-	if !data.SecurityGroups.IsNull() && !data.SecurityGroups.IsUnknown() {
-		if err := common.CascadeInstanceSecurityGroupsToPorts(ctx, r.client.Client, data.UUID.ValueString(), data.SecurityGroups); err != nil {
+	if !plannedSecurityGroups.IsNull() && !plannedSecurityGroups.IsUnknown() {
+		if err := common.CascadeInstanceSecurityGroupsToPorts(ctx, r.client.Client, data.UUID.ValueString(), plannedSecurityGroups); err != nil {
 			resp.Diagnostics.AddError(
 				"Failed to cascade security groups to ports",
 				err.Error(),
@@ -1355,6 +1356,7 @@ func (r *OpenstackInstanceResource) Create(ctx context.Context, req resource.Cre
 		apiResp = refreshedResp
 		resp.Diagnostics.Append(data.CopyFrom(ctx, *apiResp)...)
 	}
+	data.SecurityGroups = normalizeSecurityGroups(ctx, data.SecurityGroups, plannedSecurityGroups, false)
 
 	// Resolve unknown attributes to explicit null values
 	r.resolveUnknownAttributes(&data)
@@ -1371,6 +1373,7 @@ func (r *OpenstackInstanceResource) Read(ctx context.Context, req resource.ReadR
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	priorSecurityGroups := data.SecurityGroups
 
 	// Call Waldur API to read resource
 
@@ -1392,6 +1395,7 @@ func (r *OpenstackInstanceResource) Read(ctx context.Context, req resource.ReadR
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	data.SecurityGroups = normalizeSecurityGroups(ctx, data.SecurityGroups, priorSecurityGroups, true)
 
 	// Resolve unknown attributes to explicit null values
 	r.resolveUnknownAttributes(&data)
@@ -1409,6 +1413,8 @@ func (r *OpenstackInstanceResource) Update(ctx context.Context, req resource.Upd
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	plannedSecurityGroups := data.SecurityGroups
+	priorSecurityGroups := state.SecurityGroups
 
 	// Phase 1: Standard PATCH (Simple fields)
 	// We compare the plan (data) with the state (state) to determine which fields changed.
@@ -1513,10 +1519,10 @@ func (r *OpenstackInstanceResource) Update(ctx context.Context, req resource.Upd
 		resp.Diagnostics.Append(data.CopyFrom(ctx, *apiResp)...)
 		state = data // Update local state to avoid repeated action calls if multiple fields changed (though actions are usually 1-to-1)
 	}
-	if !data.SecurityGroups.Equal(state.SecurityGroups) {
-		// Convert Terraform value to API payload for the specific action
-		var req OpenstackInstanceUpdateSecurityGroupsActionRequest
-		resp.Diagnostics.Append(common.PopulateSetField(ctx, data.SecurityGroups, &req.SecurityGroups)...)
+	if !plannedSecurityGroups.Equal(priorSecurityGroups) {
+		// The action takes the groups' urls; the plan may carry unknown
+		// nested attributes, so the list is built from the urls alone.
+		req := OpenstackInstanceUpdateSecurityGroupsActionRequest{SecurityGroups: securityGroupLinks(plannedSecurityGroups)}
 
 		// Execute the Action
 		if err := r.client.UpdateSecurityGroups(ctx, data.UUID.ValueString(), &req); err != nil {
@@ -1547,6 +1553,7 @@ func (r *OpenstackInstanceResource) Update(ctx context.Context, req resource.Upd
 		return
 	}
 	resp.Diagnostics.Append(data.CopyFrom(ctx, *apiResp)...)
+	data.SecurityGroups = normalizeSecurityGroups(ctx, data.SecurityGroups, plannedSecurityGroups, false)
 
 	// Resolve unknown attributes to explicit null values
 	r.resolveUnknownAttributes(&data)
