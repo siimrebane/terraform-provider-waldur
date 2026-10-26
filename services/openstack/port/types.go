@@ -31,27 +31,19 @@ type OpenstackPortUpdateRequest struct {
 
 	Name *string `json:"name,omitempty" tfsdk:"name"`
 
-	SecurityGroups *[]common.OpenStackPortNestedSecurityGroupRequest `json:"security_groups,omitempty" tfsdk:"security_groups"`
-
 	TargetTenant *string `json:"target_tenant,omitempty" tfsdk:"target_tenant"`
 }
 
 type OpenstackPortUpdateSecurityGroupsActionRequest struct {
-	SecurityGroups []common.OpenStackPortNestedSecurityGroupRequest `json:"-"`
+	SecurityGroups []common.OpenStackPortNestedSecurityGroupRequest `json:"security_groups"`
 }
 
-// MarshalJSON builds the body the Waldur action expects: the port's
-// update_security_groups uses OpenStackInstanceSecurityGroupsUpdateSerializer,
-// which reads {"security_groups": ["<url>", ...]}. Elements without a url
-// are skipped.
 func (r OpenstackPortUpdateSecurityGroupsActionRequest) MarshalJSON() ([]byte, error) {
-	urls := make([]string, 0, len(r.SecurityGroups))
-	for _, sg := range r.SecurityGroups {
-		if sg.Url != nil && *sg.Url != "" {
-			urls = append(urls, *sg.Url)
-		}
+	urls := make([]*string, len(r.SecurityGroups))
+	for i, item := range r.SecurityGroups {
+		urls[i] = item.Url
 	}
-	return json.Marshal(map[string]interface{}{"security_groups": urls})
+	return json.Marshal(map[string][]*string{"security_groups": urls})
 }
 
 type OpenstackPortResponse struct {
@@ -78,6 +70,8 @@ type OpenstackPortResponse struct {
 	FloatingIps *[]string `json:"floating_ips,omitempty" tfsdk:"floating_ips"`
 
 	MacAddress *string `json:"mac_address,omitempty" tfsdk:"mac_address"`
+
+	MarketplaceOfferingType *string `json:"marketplace_offering_type,omitempty" tfsdk:"marketplace_offering_type"`
 
 	MarketplaceResourceUuid *string `json:"marketplace_resource_uuid,omitempty" tfsdk:"marketplace_resource_uuid"`
 
@@ -123,9 +117,9 @@ type OpenstackPortFixedIpsResponse struct {
 }
 
 type OpenstackPortSecurityGroupsResponse struct {
-	Name *string `json:"name,omitempty" tfsdk:"name"`
+	Url *string `json:"url" tfsdk:"url"`
 
-	Url *string `json:"url,omitempty" tfsdk:"url"`
+	Name *string `json:"name,omitempty" tfsdk:"name"`
 
 	Uuid *string `json:"uuid,omitempty" tfsdk:"uuid"`
 }

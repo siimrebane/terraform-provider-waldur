@@ -84,11 +84,6 @@ func (c *OpenstackInstanceClient) List(ctx context.Context, filter map[string]st
 	return listResult, nil
 }
 
-func (c *OpenstackInstanceClient) ChangeFlavor(ctx context.Context, id string, req *OpenstackInstanceChangeFlavorActionRequest) error {
-	path := "/api/openstack-instances/{uuid}/change_flavor/"
-	err := c.Client.ExecuteAction(ctx, path, id, req, nil)
-	return err
-}
 func (c *OpenstackInstanceClient) UpdateFloatingIps(ctx context.Context, id string, req *OpenstackInstanceUpdateFloatingIpsActionRequest) error {
 	path := "/api/openstack-instances/{uuid}/update_floating_ips/"
 	err := c.Client.ExecuteAction(ctx, path, id, req, nil)

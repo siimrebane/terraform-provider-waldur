@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
@@ -34,7 +35,8 @@ type OpenstackSubnetResource struct {
 // OpenstackSubnetResourceModel describes the resource data model.
 type OpenstackSubnetResourceModel struct {
 	OpenstackSubnetModel
-	Timeouts timeouts.Value `tfsdk:"timeouts"`
+	SkipRouterConnection types.Bool     `tfsdk:"skip_router_connection"`
+	Timeouts             timeouts.Value `tfsdk:"timeouts"`
 }
 
 func (r *OpenstackSubnetResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -151,12 +153,32 @@ func (r *OpenstackSubnetResource) Schema(ctx context.Context, req resource.Schem
 
 					int64planmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "IP protocol version (4 or 6)"},
+			"ipv6_address_mode": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "How instances on an IPv6 subnet get their address. Set at creation only; null for an IPv4 subnet."},
+			"ipv6_ra_mode": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "How the router advertises an IPv6 subnet. Set at creation only; null for an IPv4 subnet."},
 			"is_connected": schema.BoolAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.Bool{
 
 					boolplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Is subnet connected to the default tenant router."},
+			"marketplace_offering_type": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Marketplace Offering Type"},
 			"marketplace_resource_uuid": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -177,6 +199,12 @@ func (r *OpenstackSubnetResource) Schema(ctx context.Context, req resource.Schem
 
 					stringplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Network Name"},
+			"port_security_enabled": schema.BoolAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.Bool{
+
+					boolplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Port Security Enabled"},
 			"project": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -189,6 +217,27 @@ func (r *OpenstackSubnetResource) Schema(ctx context.Context, req resource.Schem
 
 					stringplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Resource Type"},
+			"router": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Router to attach the subnet to. Optional: when omitted Waldur picks a router of the tenant itself. Cannot be changed here afterwards -- use the router's add/remove interface actions."},
+			"router_name": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Router Name"},
+			"router_uuid": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Router Uuid"},
+			"skip_router_connection": schema.BoolAttribute{
+				Optional: true, MarkdownDescription: "Create the subnet without attaching it to a router. Off by default, so an omitted field behaves exactly as before: Waldur attaches the subnet to a router of the tenant."},
 			"state": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -201,6 +250,12 @@ func (r *OpenstackSubnetResource) Schema(ctx context.Context, req resource.Schem
 
 					stringplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Tenant"},
+			"tenant_is_managed": schema.BoolAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.Bool{
+
+					boolplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "False when the subnet's network belongs to an OpenStack project that Waldur does not manage and only reaches tenants through an RBAC share."},
 			"tenant_name": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -266,8 +321,24 @@ func (r *OpenstackSubnetResource) Create(ctx context.Context, req resource.Creat
 
 		requestBody.GatewayIp = data.GatewayIp.ValueStringPointer()
 	}
+	if !data.Ipv6AddressMode.IsNull() && !data.Ipv6AddressMode.IsUnknown() {
+
+		requestBody.Ipv6AddressMode = data.Ipv6AddressMode.ValueStringPointer()
+	}
+	if !data.Ipv6RaMode.IsNull() && !data.Ipv6RaMode.IsUnknown() {
+
+		requestBody.Ipv6RaMode = data.Ipv6RaMode.ValueStringPointer()
+	}
 
 	requestBody.Name = data.Name.ValueStringPointer()
+	if !data.Router.IsNull() && !data.Router.IsUnknown() {
+
+		requestBody.Router = data.Router.ValueStringPointer()
+	}
+	if !data.SkipRouterConnection.IsNull() && !data.SkipRouterConnection.IsUnknown() {
+
+		requestBody.SkipRouterConnection = data.SkipRouterConnection.ValueBoolPointer()
+	}
 	resp.Diagnostics.Append(common.PopulateOptionalSliceField(ctx, data.AllocationPools, &requestBody.AllocationPools)...)
 	resp.Diagnostics.Append(common.PopulateOptionalSliceField(ctx, data.DnsNameservers, &requestBody.DnsNameservers)...)
 	resp.Diagnostics.Append(common.PopulateOptionalSliceField(ctx, data.HostRoutes, &requestBody.HostRoutes)...)
@@ -290,6 +361,7 @@ func (r *OpenstackSubnetResource) Create(ctx context.Context, req resource.Creat
 		return r.client.Get(ctx, data.UUID.ValueString())
 	}, createTimeout)
 	if err != nil {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		resp.Diagnostics.AddError("Failed to wait for resource creation", err.Error())
 		return
 	}
@@ -379,10 +451,30 @@ func (r *OpenstackSubnetResource) Update(ctx context.Context, req resource.Updat
 	if !data.HostRoutes.Equal(state.HostRoutes) {
 		anyChanges = true
 	}
+	if !data.Ipv6AddressMode.IsNull() && !data.Ipv6AddressMode.IsUnknown() && !data.Ipv6AddressMode.Equal(state.Ipv6AddressMode) {
+		anyChanges = true
+
+		requestBody.Ipv6AddressMode = data.Ipv6AddressMode.ValueStringPointer()
+	}
+	if !data.Ipv6RaMode.IsNull() && !data.Ipv6RaMode.IsUnknown() && !data.Ipv6RaMode.Equal(state.Ipv6RaMode) {
+		anyChanges = true
+
+		requestBody.Ipv6RaMode = data.Ipv6RaMode.ValueStringPointer()
+	}
 	if !data.Name.IsNull() && !data.Name.IsUnknown() && !data.Name.Equal(state.Name) {
 		anyChanges = true
 
 		requestBody.Name = data.Name.ValueStringPointer()
+	}
+	if !data.Router.IsNull() && !data.Router.IsUnknown() && !data.Router.Equal(state.Router) {
+		anyChanges = true
+
+		requestBody.Router = data.Router.ValueStringPointer()
+	}
+	if !data.SkipRouterConnection.IsNull() && !data.SkipRouterConnection.IsUnknown() && !data.SkipRouterConnection.Equal(state.SkipRouterConnection) {
+		anyChanges = true
+
+		requestBody.SkipRouterConnection = data.SkipRouterConnection.ValueBoolPointer()
 	}
 
 	resp.Diagnostics.Append(common.PopulateOptionalSliceField(ctx, data.AllocationPools, &requestBody.AllocationPools)...)
@@ -491,6 +583,12 @@ func (r *OpenstackSubnetResource) ImportState(ctx context.Context, req resource.
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
+	data.Timeouts = timeouts.Value{
+		Object: types.ObjectNull(map[string]attr.Type{
+			"create": types.StringType,
+			"update": types.StringType,
+			"delete": types.StringType,
+		}),
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

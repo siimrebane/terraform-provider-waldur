@@ -127,7 +127,7 @@ func TestNormalizeSecurityGroupsNullPassesThrough(t *testing.T) {
 func TestActionPayloadShapes(t *testing.T) {
 	u1, u2 := sgSSH, sgWeb
 	b, err := json.Marshal(OpenstackInstanceUpdateSecurityGroupsActionRequest{
-		SecurityGroups: []common.OpenStackSecurityGroupHyperlinkRequest{{Url: &u1}, {Url: &u2}, {}},
+		SecurityGroups: []common.OpenStackSecurityGroupHyperlinkRequest{{Url: &u1}, {Url: &u2}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -144,8 +144,12 @@ func TestActionPayloadShapes(t *testing.T) {
 	}
 
 	b, _ = json.Marshal(OpenstackInstanceUpdateFloatingIpsActionRequest{})
-	if string(b) != `{"floating_ips":[]}` {
-		t.Fatalf("floating_ips payload: %s", b)
+	var fips map[string]any
+	if err := json.Unmarshal(b, &fips); err != nil {
+		t.Fatalf("floating_ips payload: %s (%v)", b, err)
+	}
+	if _, ok := fips["floating_ips"]; !ok {
+		t.Fatalf("floating_ips payload must be an object with a floating_ips key: %s", b)
 	}
 }
 

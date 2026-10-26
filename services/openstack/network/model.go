@@ -14,9 +14,13 @@ import (
 func NetworkRBACPolicyType() types.ObjectType {
 	return types.ObjectType{AttrTypes: map[string]attr.Type{
 		"backend_id":         types.StringType,
+		"direction":          types.StringType,
 		"network":            types.StringType,
 		"network_name":       types.StringType,
 		"policy_type":        types.StringType,
+		"source_tenant_name": types.StringType,
+		"source_tenant_uuid": types.StringType,
+		"target_label":       types.StringType,
 		"target_tenant":      types.StringType,
 		"target_tenant_name": types.StringType,
 		"url":                types.StringType,
@@ -25,14 +29,17 @@ func NetworkRBACPolicyType() types.ObjectType {
 }
 func OpenStackNestedSubNetType() types.ObjectType {
 	return types.ObjectType{AttrTypes: map[string]attr.Type{
-		"allocation_pools": types.ListType{ElemType: OpenStackSubNetAllocationPoolType()},
-		"cidr":             types.StringType,
-		"description":      types.StringType,
-		"enable_dhcp":      types.BoolType,
-		"gateway_ip":       types.StringType,
-		"ip_version":       types.Int64Type,
-		"name":             types.StringType,
-		"uuid":             types.StringType,
+		"allocation_pools":      types.ListType{ElemType: OpenStackSubNetAllocationPoolType()},
+		"cidr":                  types.StringType,
+		"description":           types.StringType,
+		"enable_dhcp":           types.BoolType,
+		"gateway_ip":            types.StringType,
+		"ip_version":            types.Int64Type,
+		"ipv6_address_mode":     types.StringType,
+		"ipv6_ra_mode":          types.StringType,
+		"name":                  types.StringType,
+		"port_security_enabled": types.BoolType,
+		"uuid":                  types.StringType,
 	}}
 }
 func OpenStackSubNetAllocationPoolType() types.ObjectType {
@@ -65,7 +72,6 @@ type OpenstackNetworkFiltersModel struct {
 	Tenant               types.String `tfsdk:"tenant"`
 	TenantUuid           types.String `tfsdk:"tenant_uuid"`
 	Type                 types.String `tfsdk:"type"`
-	Uuid                 types.String `tfsdk:"uuid"`
 }
 
 func (m *OpenstackNetworkFiltersModel) GetSchema() schema.SingleNestedAttribute {
@@ -161,10 +167,6 @@ func (m *OpenstackNetworkFiltersModel) GetSchema() schema.SingleNestedAttribute 
 				Optional:            true,
 				MarkdownDescription: "Type",
 			},
-			"uuid": schema.StringAttribute{
-				Optional:            true,
-				MarkdownDescription: "UUID",
-			},
 		},
 	}
 }
@@ -176,9 +178,11 @@ type OpenstackNetworkModel struct {
 	Description             types.String `tfsdk:"description"`
 	ErrorMessage            types.String `tfsdk:"error_message"`
 	IsExternal              types.Bool   `tfsdk:"is_external"`
+	MarketplaceOfferingType types.String `tfsdk:"marketplace_offering_type"`
 	MarketplaceResourceUuid types.String `tfsdk:"marketplace_resource_uuid"`
 	Mtu                     types.Int64  `tfsdk:"mtu"`
 	Name                    types.String `tfsdk:"name"`
+	PortSecurityEnabled     types.Bool   `tfsdk:"port_security_enabled"`
 	Project                 types.String `tfsdk:"project"`
 	RbacPolicies            types.List   `tfsdk:"rbac_policies"`
 	ResourceType            types.String `tfsdk:"resource_type"`
@@ -186,6 +190,7 @@ type OpenstackNetworkModel struct {
 	State                   types.String `tfsdk:"state"`
 	Subnets                 types.List   `tfsdk:"subnets"`
 	Tenant                  types.String `tfsdk:"tenant"`
+	TenantIsManaged         types.Bool   `tfsdk:"tenant_is_managed"`
 	TenantName              types.String `tfsdk:"tenant_name"`
 	TenantUuid              types.String `tfsdk:"tenant_uuid"`
 	Type                    types.String `tfsdk:"type"`
@@ -208,11 +213,15 @@ func (model *OpenstackNetworkModel) CopyFrom(ctx context.Context, apiResp Openst
 
 	model.IsExternal = types.BoolPointerValue(apiResp.IsExternal)
 
+	model.MarketplaceOfferingType = common.StringPointerValue(apiResp.MarketplaceOfferingType)
+
 	model.MarketplaceResourceUuid = common.StringPointerValue(apiResp.MarketplaceResourceUuid)
 
 	model.Mtu = types.Int64PointerValue(apiResp.Mtu)
 
 	model.Name = common.StringPointerValue(apiResp.Name)
+
+	model.PortSecurityEnabled = types.BoolPointerValue(apiResp.PortSecurityEnabled)
 
 	model.Project = common.StringPointerValue(apiResp.Project)
 
@@ -239,6 +248,8 @@ func (model *OpenstackNetworkModel) CopyFrom(ctx context.Context, apiResp Openst
 	}
 
 	model.Tenant = common.StringPointerValue(apiResp.Tenant)
+
+	model.TenantIsManaged = types.BoolPointerValue(apiResp.TenantIsManaged)
 
 	model.TenantName = common.StringPointerValue(apiResp.TenantName)
 

@@ -1,7 +1,8 @@
 terraform {
   required_providers {
     waldur = {
-      source = "waldur/waldur"
+      source  = "siimrebane/waldur"
+      version = "~> 0.3"
     }
   }
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
@@ -21,6 +22,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/waldur/terraform-provider-waldur/internal/sdk/common"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -94,6 +97,13 @@ func (r *StructureCustomerResource) Schema(ctx context.Context, req resource.Sch
 
 					stringplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Agreement Number"},
+			"apartment_nr": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Apartment Nr"},
 			"archived": schema.BoolAttribute{
 				Optional: true,
 				Computed: true,
@@ -168,6 +178,13 @@ func (r *StructureCustomerResource) Schema(ctx context.Context, req resource.Sch
 
 					stringplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Call Managing Organization Uuid"},
+			"city": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "City"},
 			"contact_details": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
@@ -188,18 +205,103 @@ func (r *StructureCustomerResource) Schema(ctx context.Context, req resource.Sch
 
 					stringplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Human-readable country name"},
-			"customer_credit": schema.Float64Attribute{
+			"customer_credit": schema.StringAttribute{
 				Computed: true,
-				PlanModifiers: []planmodifier.Float64{
+				PlanModifiers: []planmodifier.String{
 
-					float64planmodifier.UseStateForUnknown(),
+					stringplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Customer Credit"},
-			"customer_unallocated_credit": schema.Float64Attribute{
+			"customer_unallocated_credit": schema.StringAttribute{
 				Computed: true,
-				PlanModifiers: []planmodifier.Float64{
+				PlanModifiers: []planmodifier.String{
 
-					float64planmodifier.UseStateForUnknown(),
+					stringplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Customer Unallocated Credit"},
+			"default_affiliations": schema.ListNestedAttribute{
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"abbreviation": schema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Abbreviation"},
+						"address": schema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Address"},
+						"code": schema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Unique short identifier, e.g. CERN, EMBL."},
+						"country": schema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Country"},
+						"description": schema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Description"},
+						"email": schema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Email"},
+						"homepage": schema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Homepage"},
+						"name": schema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Name"},
+						"projects_count": schema.Int64Attribute{
+							Computed: true,
+							PlanModifiers: []planmodifier.Int64{
+
+								int64planmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Number of active projects affiliated with this organization"},
+						"url": schema.StringAttribute{
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Url"},
+						"uuid": schema.StringAttribute{
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Uuid"},
+					},
+				},
+				Computed: true,
+				PlanModifiers: []planmodifier.List{
+
+					listplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Affiliations offered to project creators of this organization.",
+			},
 			"default_tax_percent": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
@@ -255,6 +357,18 @@ func (r *StructureCustomerResource) Schema(ctx context.Context, req resource.Sch
 					int64validator.AtLeast(0),
 					int64validator.AtMost(2147483647),
 				}},
+			"has_active_helpdesk": schema.BoolAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.Bool{
+
+					boolplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Has Active Helpdesk"},
+			"has_affiliate_links": schema.BoolAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.Bool{
+
+					boolplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Has Affiliate Links"},
 			"homepage": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
@@ -262,6 +376,20 @@ func (r *StructureCustomerResource) Schema(ctx context.Context, req resource.Sch
 
 					stringplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Homepage"},
+			"house_nr": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "House Nr"},
+			"household": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Household"},
 			"image": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
@@ -275,6 +403,26 @@ func (r *StructureCustomerResource) Schema(ctx context.Context, req resource.Sch
 
 					boolplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Is Service Provider"},
+			"is_service_provider_manager_only": schema.BoolAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.Bool{
+
+					boolplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "True when the requesting user's only link to this organization is a role on its service provider. Such a row carries only identity fields."},
+			"latitude": schema.Float64Attribute{
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.Float64{
+
+					float64planmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Latitude"},
+			"longitude": schema.Float64Attribute{
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.Float64{
+
+					float64planmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Longitude"},
 			"max_service_accounts": schema.Int64Attribute{
 				Optional: true,
 				Computed: true,
@@ -357,6 +505,13 @@ func (r *StructureCustomerResource) Schema(ctx context.Context, req resource.Sch
 					listplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Organization groups this customer belongs to",
 			},
+			"parish": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Parish"},
 			"payment_profiles": schema.ListNestedAttribute{
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -369,12 +524,12 @@ func (r *StructureCustomerResource) Schema(ctx context.Context, req resource.Sch
 
 										stringplanmodifier.UseStateForUnknown(),
 									}, MarkdownDescription: "Agreement Number"},
-								"contract_sum": schema.Int64Attribute{
+								"contract_sum": schema.StringAttribute{
 									Optional: true,
 									Computed: true,
-									PlanModifiers: []planmodifier.Int64{
+									PlanModifiers: []planmodifier.String{
 
-										int64planmodifier.UseStateForUnknown(),
+										stringplanmodifier.UseStateForUnknown(),
 									}, MarkdownDescription: "Contract Sum"},
 								"end_date": schema.StringAttribute{
 									Optional: true,
@@ -475,6 +630,13 @@ func (r *StructureCustomerResource) Schema(ctx context.Context, req resource.Sch
 
 					stringplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Checklist to be used for project metadata validation in this organization"},
+			"project_slug_template": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Template for project slugs. Supports: {customer_slug}, {project_name}, {year}, {month}, {counter}, {counter_padded}. Default: slugified project name"},
 			"projects_count": schema.Int64Attribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.Int64{
@@ -521,12 +683,43 @@ func (r *StructureCustomerResource) Schema(ctx context.Context, req resource.Sch
 					int64validator.AtLeast(0),
 					int64validator.AtMost(2147483647),
 				}},
+			"street": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Street"},
 			"url": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 
 					stringplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Url"},
+			"user_affiliations": schema.ListAttribute{
+				ElementType: types.StringType,
+				Optional:    true,
+				Computed:    true,
+				PlanModifiers: []planmodifier.List{
+
+					listplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "User Affiliations"},
+			"user_email_patterns": schema.ListAttribute{
+				ElementType: types.StringType,
+				Optional:    true,
+				Computed:    true,
+				PlanModifiers: []planmodifier.List{
+
+					listplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "User Email Patterns"},
+			"user_identity_sources": schema.ListAttribute{
+				ElementType: types.StringType,
+				Optional:    true,
+				Computed:    true,
+				PlanModifiers: []planmodifier.List{
+
+					listplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "User Identity Sources"},
 			"users_count": schema.Int64Attribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.Int64{
@@ -540,6 +733,8 @@ func (r *StructureCustomerResource) Schema(ctx context.Context, req resource.Sch
 
 					stringplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "VAT number"},
+			"state": schema.StringAttribute{
+				Optional: true, MarkdownDescription: "State"},
 		},
 
 		Blocks: map[string]schema.Block{
@@ -597,6 +792,10 @@ func (r *StructureCustomerResource) Create(ctx context.Context, req resource.Cre
 
 		requestBody.AgreementNumber = data.AgreementNumber.ValueStringPointer()
 	}
+	if !data.ApartmentNr.IsNull() && !data.ApartmentNr.IsUnknown() {
+
+		requestBody.ApartmentNr = data.ApartmentNr.ValueStringPointer()
+	}
 	if !data.Archived.IsNull() && !data.Archived.IsUnknown() {
 
 		requestBody.Archived = data.Archived.ValueBoolPointer()
@@ -616,6 +815,10 @@ func (r *StructureCustomerResource) Create(ctx context.Context, req resource.Cre
 	if !data.Blocked.IsNull() && !data.Blocked.IsUnknown() {
 
 		requestBody.Blocked = data.Blocked.ValueBoolPointer()
+	}
+	if !data.City.IsNull() && !data.City.IsUnknown() {
+
+		requestBody.City = data.City.ValueStringPointer()
 	}
 	if !data.ContactDetails.IsNull() && !data.ContactDetails.IsUnknown() {
 
@@ -653,9 +856,25 @@ func (r *StructureCustomerResource) Create(ctx context.Context, req resource.Cre
 
 		requestBody.Homepage = data.Homepage.ValueStringPointer()
 	}
+	if !data.HouseNr.IsNull() && !data.HouseNr.IsUnknown() {
+
+		requestBody.HouseNr = data.HouseNr.ValueStringPointer()
+	}
+	if !data.Household.IsNull() && !data.Household.IsUnknown() {
+
+		requestBody.Household = data.Household.ValueStringPointer()
+	}
 	if !data.Image.IsNull() && !data.Image.IsUnknown() {
 
 		requestBody.Image = data.Image.ValueStringPointer()
+	}
+	if !data.Latitude.IsNull() && !data.Latitude.IsUnknown() {
+
+		requestBody.Latitude = data.Latitude.ValueFloat64Pointer()
+	}
+	if !data.Longitude.IsNull() && !data.Longitude.IsUnknown() {
+
+		requestBody.Longitude = data.Longitude.ValueFloat64Pointer()
 	}
 	if !data.MaxServiceAccounts.IsNull() && !data.MaxServiceAccounts.IsUnknown() {
 
@@ -671,6 +890,10 @@ func (r *StructureCustomerResource) Create(ctx context.Context, req resource.Cre
 
 		requestBody.NotificationEmails = data.NotificationEmails.ValueStringPointer()
 	}
+	if !data.Parish.IsNull() && !data.Parish.IsUnknown() {
+
+		requestBody.Parish = data.Parish.ValueStringPointer()
+	}
 	if !data.PhoneNumber.IsNull() && !data.PhoneNumber.IsUnknown() {
 
 		requestBody.PhoneNumber = data.PhoneNumber.ValueStringPointer()
@@ -682,6 +905,10 @@ func (r *StructureCustomerResource) Create(ctx context.Context, req resource.Cre
 	if !data.ProjectMetadataChecklist.IsNull() && !data.ProjectMetadataChecklist.IsUnknown() {
 
 		requestBody.ProjectMetadataChecklist = data.ProjectMetadataChecklist.ValueStringPointer()
+	}
+	if !data.ProjectSlugTemplate.IsNull() && !data.ProjectSlugTemplate.IsUnknown() {
+
+		requestBody.ProjectSlugTemplate = data.ProjectSlugTemplate.ValueStringPointer()
 	}
 	if !data.RegistrationCode.IsNull() && !data.RegistrationCode.IsUnknown() {
 
@@ -695,10 +922,17 @@ func (r *StructureCustomerResource) Create(ctx context.Context, req resource.Cre
 
 		requestBody.SponsorNumber = data.SponsorNumber.ValueInt64Pointer()
 	}
+	if !data.Street.IsNull() && !data.Street.IsUnknown() {
+
+		requestBody.Street = data.Street.ValueStringPointer()
+	}
 	if !data.VatCode.IsNull() && !data.VatCode.IsUnknown() {
 
 		requestBody.VatCode = data.VatCode.ValueStringPointer()
 	}
+	resp.Diagnostics.Append(common.PopulateOptionalSliceField(ctx, data.UserAffiliations, &requestBody.UserAffiliations)...)
+	resp.Diagnostics.Append(common.PopulateOptionalSliceField(ctx, data.UserEmailPatterns, &requestBody.UserEmailPatterns)...)
+	resp.Diagnostics.Append(common.PopulateOptionalSliceField(ctx, data.UserIdentitySources, &requestBody.UserIdentitySources)...)
 
 	apiResp, err := r.client.Create(ctx, &requestBody)
 	if err != nil {
@@ -784,6 +1018,11 @@ func (r *StructureCustomerResource) Update(ctx context.Context, req resource.Upd
 
 		requestBody.AgreementNumber = data.AgreementNumber.ValueStringPointer()
 	}
+	if !data.ApartmentNr.IsNull() && !data.ApartmentNr.IsUnknown() && !data.ApartmentNr.Equal(state.ApartmentNr) {
+		anyChanges = true
+
+		requestBody.ApartmentNr = data.ApartmentNr.ValueStringPointer()
+	}
 	if !data.Archived.IsNull() && !data.Archived.IsUnknown() && !data.Archived.Equal(state.Archived) {
 		anyChanges = true
 
@@ -808,6 +1047,11 @@ func (r *StructureCustomerResource) Update(ctx context.Context, req resource.Upd
 		anyChanges = true
 
 		requestBody.Blocked = data.Blocked.ValueBoolPointer()
+	}
+	if !data.City.IsNull() && !data.City.IsUnknown() && !data.City.Equal(state.City) {
+		anyChanges = true
+
+		requestBody.City = data.City.ValueStringPointer()
 	}
 	if !data.ContactDetails.IsNull() && !data.ContactDetails.IsUnknown() && !data.ContactDetails.Equal(state.ContactDetails) {
 		anyChanges = true
@@ -854,10 +1098,30 @@ func (r *StructureCustomerResource) Update(ctx context.Context, req resource.Upd
 
 		requestBody.Homepage = data.Homepage.ValueStringPointer()
 	}
+	if !data.HouseNr.IsNull() && !data.HouseNr.IsUnknown() && !data.HouseNr.Equal(state.HouseNr) {
+		anyChanges = true
+
+		requestBody.HouseNr = data.HouseNr.ValueStringPointer()
+	}
+	if !data.Household.IsNull() && !data.Household.IsUnknown() && !data.Household.Equal(state.Household) {
+		anyChanges = true
+
+		requestBody.Household = data.Household.ValueStringPointer()
+	}
 	if !data.Image.IsNull() && !data.Image.IsUnknown() && !data.Image.Equal(state.Image) {
 		anyChanges = true
 
 		requestBody.Image = data.Image.ValueStringPointer()
+	}
+	if !data.Latitude.IsNull() && !data.Latitude.IsUnknown() && !data.Latitude.Equal(state.Latitude) {
+		anyChanges = true
+
+		requestBody.Latitude = data.Latitude.ValueFloat64Pointer()
+	}
+	if !data.Longitude.IsNull() && !data.Longitude.IsUnknown() && !data.Longitude.Equal(state.Longitude) {
+		anyChanges = true
+
+		requestBody.Longitude = data.Longitude.ValueFloat64Pointer()
 	}
 	if !data.MaxServiceAccounts.IsNull() && !data.MaxServiceAccounts.IsUnknown() && !data.MaxServiceAccounts.Equal(state.MaxServiceAccounts) {
 		anyChanges = true
@@ -879,6 +1143,11 @@ func (r *StructureCustomerResource) Update(ctx context.Context, req resource.Upd
 
 		requestBody.NotificationEmails = data.NotificationEmails.ValueStringPointer()
 	}
+	if !data.Parish.IsNull() && !data.Parish.IsUnknown() && !data.Parish.Equal(state.Parish) {
+		anyChanges = true
+
+		requestBody.Parish = data.Parish.ValueStringPointer()
+	}
 	if !data.PhoneNumber.IsNull() && !data.PhoneNumber.IsUnknown() && !data.PhoneNumber.Equal(state.PhoneNumber) {
 		anyChanges = true
 
@@ -893,6 +1162,11 @@ func (r *StructureCustomerResource) Update(ctx context.Context, req resource.Upd
 		anyChanges = true
 
 		requestBody.ProjectMetadataChecklist = data.ProjectMetadataChecklist.ValueStringPointer()
+	}
+	if !data.ProjectSlugTemplate.IsNull() && !data.ProjectSlugTemplate.IsUnknown() && !data.ProjectSlugTemplate.Equal(state.ProjectSlugTemplate) {
+		anyChanges = true
+
+		requestBody.ProjectSlugTemplate = data.ProjectSlugTemplate.ValueStringPointer()
 	}
 	if !data.RegistrationCode.IsNull() && !data.RegistrationCode.IsUnknown() && !data.RegistrationCode.Equal(state.RegistrationCode) {
 		anyChanges = true
@@ -909,11 +1183,29 @@ func (r *StructureCustomerResource) Update(ctx context.Context, req resource.Upd
 
 		requestBody.SponsorNumber = data.SponsorNumber.ValueInt64Pointer()
 	}
+	if !data.Street.IsNull() && !data.Street.IsUnknown() && !data.Street.Equal(state.Street) {
+		anyChanges = true
+
+		requestBody.Street = data.Street.ValueStringPointer()
+	}
+	if !data.UserAffiliations.Equal(state.UserAffiliations) {
+		anyChanges = true
+	}
+	if !data.UserEmailPatterns.Equal(state.UserEmailPatterns) {
+		anyChanges = true
+	}
+	if !data.UserIdentitySources.Equal(state.UserIdentitySources) {
+		anyChanges = true
+	}
 	if !data.VatCode.IsNull() && !data.VatCode.IsUnknown() && !data.VatCode.Equal(state.VatCode) {
 		anyChanges = true
 
 		requestBody.VatCode = data.VatCode.ValueStringPointer()
 	}
+
+	resp.Diagnostics.Append(common.PopulateOptionalSliceField(ctx, data.UserAffiliations, &requestBody.UserAffiliations)...)
+	resp.Diagnostics.Append(common.PopulateOptionalSliceField(ctx, data.UserEmailPatterns, &requestBody.UserEmailPatterns)...)
+	resp.Diagnostics.Append(common.PopulateOptionalSliceField(ctx, data.UserIdentitySources, &requestBody.UserIdentitySources)...)
 
 	if anyChanges {
 		var err error
@@ -995,6 +1287,12 @@ func (r *StructureCustomerResource) ImportState(ctx context.Context, req resourc
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
+	data.Timeouts = timeouts.Value{
+		Object: types.ObjectNull(map[string]attr.Type{
+			"create": types.StringType,
+			"update": types.StringType,
+			"delete": types.StringType,
+		}),
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

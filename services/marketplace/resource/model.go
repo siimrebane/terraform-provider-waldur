@@ -12,6 +12,13 @@ import (
 	"github.com/waldur/terraform-provider-waldur/internal/sdk/common"
 )
 
+func AccountSettingType() types.ObjectType {
+	return types.ObjectType{AttrTypes: map[string]attr.Type{
+		"inherited": OfferingAccountSettingsAccountScopeInheritedType(),
+		"source":    types.StringType,
+		"value":     types.StringType,
+	}}
+}
 func NestedEndpointType() types.ObjectType {
 	return types.ObjectType{AttrTypes: map[string]attr.Type{
 		"name": types.StringType,
@@ -19,96 +26,143 @@ func NestedEndpointType() types.ObjectType {
 		"uuid": types.StringType,
 	}}
 }
+func OfferingAccountSettingsType() types.ObjectType {
+	return types.ObjectType{AttrTypes: map[string]attr.Type{
+		"account_scope":              AccountSettingType(),
+		"homedir_prefix":             AccountSettingType(),
+		"login_shell":                AccountSettingType(),
+		"username_anonymized_prefix": AccountSettingType(),
+		"username_generation_policy": AccountSettingType(),
+	}}
+}
+func OfferingAccountSettingsAccountScopeInheritedType() types.ObjectType {
+	return types.ObjectType{AttrTypes: map[string]attr.Type{
+		"source": types.StringType,
+		"value":  types.StringType,
+	}}
+}
 func OfferingComponentType() types.ObjectType {
 	return types.ObjectType{AttrTypes: map[string]attr.Type{
-		"article_code":         types.StringType,
-		"billing_type":         types.StringType,
-		"default_limit":        types.Int64Type,
-		"description":          types.StringType,
-		"factor":               types.Int64Type,
-		"is_boolean":           types.BoolType,
-		"is_builtin":           types.BoolType,
-		"is_prepaid":           types.BoolType,
-		"limit_amount":         types.Int64Type,
-		"limit_period":         types.StringType,
-		"max_available_limit":  types.Int64Type,
-		"max_prepaid_duration": types.Int64Type,
-		"max_value":            types.Int64Type,
-		"measured_unit":        types.StringType,
-		"min_prepaid_duration": types.Int64Type,
-		"min_value":            types.Int64Type,
-		"name":                 types.StringType,
-		"overage_component":    types.StringType,
-		"type":                 types.StringType,
-		"unit_factor":          types.Int64Type,
-		"uuid":                 types.StringType,
+		"article_code":          types.StringType,
+		"billing_type":          types.StringType,
+		"default_limit":         types.Float64Type,
+		"description":           types.StringType,
+		"factor":                types.Int64Type,
+		"is_boolean":            types.BoolType,
+		"is_builtin":            types.BoolType,
+		"is_prepaid":            types.BoolType,
+		"limit_amount":          types.Float64Type,
+		"limit_decimal_places":  types.Int64Type,
+		"limit_period":          types.StringType,
+		"max_available_limit":   types.Float64Type,
+		"max_prepaid_duration":  types.Int64Type,
+		"max_renewal_duration":  types.Int64Type,
+		"max_value":             types.Float64Type,
+		"measured_unit":         types.StringType,
+		"min_prepaid_duration":  types.Int64Type,
+		"min_renewal_duration":  types.Int64Type,
+		"min_value":             types.Float64Type,
+		"name":                  types.StringType,
+		"offering_uuid":         types.StringType,
+		"overage_component":     types.StringType,
+		"prepaid_duration_step": types.Int64Type,
+		"renewal_duration_step": types.Int64Type,
+		"type":                  types.StringType,
+		"unit_factor":           types.Int64Type,
+		"uuid":                  types.StringType,
 	}}
 }
 func OrderInProgressType() types.ObjectType {
 	return types.ObjectType{AttrTypes: map[string]attr.Type{
-		"activation_price":               types.Float64Type,
-		"attachment":                     types.StringType,
-		"backend_id":                     types.StringType,
-		"callback_url":                   types.StringType,
-		"can_terminate":                  types.BoolType,
-		"category_icon":                  types.StringType,
-		"category_uuid":                  types.StringType,
-		"completed_at":                   types.StringType,
-		"consumer_reviewed_at":           types.StringType,
-		"consumer_reviewed_by":           types.StringType,
-		"consumer_reviewed_by_full_name": types.StringType,
-		"consumer_reviewed_by_username":  types.StringType,
-		"cost":                           types.StringType,
-		"created_by_civil_number":        types.StringType,
-		"created_by_full_name":           types.StringType,
-		"created_by_username":            types.StringType,
-		"customer_slug":                  types.StringType,
-		"error_message":                  types.StringType,
-		"fixed_price":                    types.Float64Type,
-		"issue":                          OrderInProgressIssueType(),
-		"limits":                         types.MapType{ElemType: types.Int64Type},
-		"marketplace_resource_uuid":      types.StringType,
-		"new_cost_estimate":              types.StringType,
-		"new_plan_name":                  types.StringType,
-		"new_plan_uuid":                  types.StringType,
-		"offering":                       types.StringType,
-		"offering_billable":              types.BoolType,
-		"offering_description":           types.StringType,
-		"offering_image":                 types.StringType,
-		"offering_shared":                types.BoolType,
-		"offering_thumbnail":             types.StringType,
-		"offering_type":                  types.StringType,
-		"offering_uuid":                  types.StringType,
-		"old_cost_estimate":              types.Float64Type,
-		"old_plan_name":                  types.StringType,
-		"old_plan_uuid":                  types.StringType,
-		"order_subtype":                  types.StringType,
-		"output":                         types.StringType,
-		"plan":                           types.StringType,
-		"plan_description":               types.StringType,
-		"plan_name":                      types.StringType,
-		"plan_unit":                      types.StringType,
-		"plan_uuid":                      types.StringType,
-		"project_description":            types.StringType,
-		"project_slug":                   types.StringType,
-		"provider_name":                  types.StringType,
-		"provider_reviewed_at":           types.StringType,
-		"provider_reviewed_by":           types.StringType,
-		"provider_reviewed_by_full_name": types.StringType,
-		"provider_reviewed_by_username":  types.StringType,
-		"provider_slug":                  types.StringType,
-		"provider_uuid":                  types.StringType,
-		"request_comment":                types.StringType,
-		"resource_name":                  types.StringType,
-		"resource_type":                  types.StringType,
-		"resource_uuid":                  types.StringType,
-		"slug":                           types.StringType,
-		"start_date":                     types.StringType,
-		"state":                          types.StringType,
-		"termination_comment":            types.StringType,
-		"type":                           types.StringType,
-		"url":                            types.StringType,
-		"uuid":                           types.StringType,
+		"activation_price":                      types.Float64Type,
+		"attachment":                            types.StringType,
+		"attributes":                            types.MapType{ElemType: types.StringType},
+		"auto_approved":                         types.BoolType,
+		"auto_approved_by_rule_uuid":            types.StringType,
+		"auto_approved_cost_limit_snapshot":     types.StringType,
+		"backend_id":                            types.StringType,
+		"callback_url":                          types.StringType,
+		"can_terminate":                         types.BoolType,
+		"category_icon":                         types.StringType,
+		"category_uuid":                         types.StringType,
+		"completed_at":                          types.StringType,
+		"consumer_message":                      types.StringType,
+		"consumer_message_attachment":           types.StringType,
+		"consumer_message_updated_at":           types.StringType,
+		"consumer_rejection_comment":            types.StringType,
+		"consumer_reviewed_at":                  types.StringType,
+		"consumer_reviewed_by":                  types.StringType,
+		"consumer_reviewed_by_full_name":        types.StringType,
+		"consumer_reviewed_by_username":         types.StringType,
+		"cost":                                  types.StringType,
+		"created_by_civil_number":               types.StringType,
+		"created_by_email":                      types.StringType,
+		"created_by_full_name":                  types.StringType,
+		"created_by_organization":               types.StringType,
+		"created_by_organization_address":       types.StringType,
+		"created_by_organization_country":       types.StringType,
+		"created_by_organization_registry_code": types.StringType,
+		"created_by_organization_vat_code":      types.StringType,
+		"created_by_username":                   types.StringType,
+		"customer_slug":                         types.StringType,
+		"error_message":                         types.StringType,
+		"error_updated_at":                      types.StringType,
+		"fixed_price":                           types.Float64Type,
+		"issue":                                 OrderInProgressIssueType(),
+		"limits":                                types.MapType{ElemType: types.Float64Type},
+		"marketplace_resource_uuid":             types.StringType,
+		"new_cost_estimate":                     types.StringType,
+		"new_plan_billing_mode":                 types.StringType,
+		"new_plan_name":                         types.StringType,
+		"new_plan_uuid":                         types.StringType,
+		"offering":                              types.StringType,
+		"offering_billable":                     types.BoolType,
+		"offering_description":                  types.StringType,
+		"offering_image":                        types.StringType,
+		"offering_plugin_options":               types.MapType{ElemType: types.StringType},
+		"offering_shared":                       types.BoolType,
+		"offering_thumbnail":                    types.StringType,
+		"offering_type":                         types.StringType,
+		"offering_uuid":                         types.StringType,
+		"old_cost_estimate":                     types.Float64Type,
+		"old_plan_billing_mode":                 types.StringType,
+		"old_plan_name":                         types.StringType,
+		"old_plan_uuid":                         types.StringType,
+		"order_subtype":                         types.StringType,
+		"output":                                types.StringType,
+		"output_updated_at":                     types.StringType,
+		"plan":                                  types.StringType,
+		"plan_description":                      types.StringType,
+		"plan_name":                             types.StringType,
+		"plan_unit":                             types.StringType,
+		"plan_uuid":                             types.StringType,
+		"project_description":                   types.StringType,
+		"project_slug":                          types.StringType,
+		"provider_description":                  types.StringType,
+		"provider_message":                      types.StringType,
+		"provider_message_attachment":           types.StringType,
+		"provider_message_updated_at":           types.StringType,
+		"provider_message_url":                  types.StringType,
+		"provider_name":                         types.StringType,
+		"provider_rejection_comment":            types.StringType,
+		"provider_reviewed_at":                  types.StringType,
+		"provider_reviewed_by":                  types.StringType,
+		"provider_reviewed_by_full_name":        types.StringType,
+		"provider_reviewed_by_username":         types.StringType,
+		"provider_slug":                         types.StringType,
+		"provider_uuid":                         types.StringType,
+		"request_comment":                       types.StringType,
+		"resource_end_date":                     types.StringType,
+		"resource_name":                         types.StringType,
+		"resource_type":                         types.StringType,
+		"resource_uuid":                         types.StringType,
+		"slug":                                  types.StringType,
+		"start_date":                            types.StringType,
+		"state":                                 types.StringType,
+		"termination_comment":                   types.StringType,
+		"type":                                  types.StringType,
+		"url":                                   types.StringType,
+		"uuid":                                  types.StringType,
 	}}
 }
 func OrderInProgressIssueType() types.ObjectType {
@@ -129,15 +183,19 @@ type MarketplaceResourceFiltersModel struct {
 	CategoryUuid         types.String  `tfsdk:"category_uuid"`
 	ComponentCount       types.Float64 `tfsdk:"component_count"`
 	Created              types.String  `tfsdk:"created"`
+	CreatedBefore        types.String  `tfsdk:"created_before"`
 	Customer             types.String  `tfsdk:"customer"`
 	CustomerUuid         types.String  `tfsdk:"customer_uuid"`
 	Downscaled           types.Bool    `tfsdk:"downscaled"`
+	FlavorName           types.String  `tfsdk:"flavor_name"`
 	HasTerminateDate     types.Bool    `tfsdk:"has_terminate_date"`
+	ImageName            types.String  `tfsdk:"image_name"`
 	IsAttached           types.Bool    `tfsdk:"is_attached"`
 	LexisLinksSupported  types.Bool    `tfsdk:"lexis_links_supported"`
 	LimitBased           types.Bool    `tfsdk:"limit_based"`
 	LimitComponentCount  types.Float64 `tfsdk:"limit_component_count"`
 	Modified             types.String  `tfsdk:"modified"`
+	ModifiedBefore       types.String  `tfsdk:"modified_before"`
 	Name                 types.String  `tfsdk:"name"`
 	NameExact            types.String  `tfsdk:"name_exact"`
 	Offering             types.String  `tfsdk:"offering"`
@@ -153,9 +211,12 @@ type MarketplaceResourceFiltersModel struct {
 	ProjectUuid          types.String  `tfsdk:"project_uuid"`
 	ProviderUuid         types.String  `tfsdk:"provider_uuid"`
 	Query                types.String  `tfsdk:"query"`
+	ResourceAttributes   types.String  `tfsdk:"resource_attributes"`
 	RestrictMemberAccess types.Bool    `tfsdk:"restrict_member_access"`
 	RuntimeState         types.String  `tfsdk:"runtime_state"`
+	Scope                types.String  `tfsdk:"scope"`
 	ServiceManagerUuid   types.String  `tfsdk:"service_manager_uuid"`
+	Slug                 types.String  `tfsdk:"slug"`
 	UsageBased           types.Bool    `tfsdk:"usage_based"`
 	VisibleToProviders   types.Bool    `tfsdk:"visible_to_providers"`
 	VisibleToUsername    types.String  `tfsdk:"visible_to_username"`
@@ -182,6 +243,10 @@ func (m *MarketplaceResourceFiltersModel) GetSchema() schema.SingleNestedAttribu
 				Optional:            true,
 				MarkdownDescription: "Created after",
 			},
+			"created_before": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Created before",
+			},
 			"customer": schema.StringAttribute{
 				Optional:            true,
 				MarkdownDescription: "Customer URL",
@@ -194,9 +259,17 @@ func (m *MarketplaceResourceFiltersModel) GetSchema() schema.SingleNestedAttribu
 				Optional:            true,
 				MarkdownDescription: "Downscaled",
 			},
+			"flavor_name": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Flavor name",
+			},
 			"has_terminate_date": schema.BoolAttribute{
 				Optional:            true,
 				MarkdownDescription: "Has termination date",
+			},
+			"image_name": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Image name",
 			},
 			"is_attached": schema.BoolAttribute{
 				Optional:            true,
@@ -217,6 +290,10 @@ func (m *MarketplaceResourceFiltersModel) GetSchema() schema.SingleNestedAttribu
 			"modified": schema.StringAttribute{
 				Optional:            true,
 				MarkdownDescription: "Modified after",
+			},
+			"modified_before": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Modified before",
 			},
 			"name": schema.StringAttribute{
 				Optional:            true,
@@ -278,6 +355,10 @@ func (m *MarketplaceResourceFiltersModel) GetSchema() schema.SingleNestedAttribu
 				Optional:            true,
 				MarkdownDescription: "Search by resource UUID, name, slug, backend ID, effective ID, IPs or hypervisor",
 			},
+			"resource_attributes": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Resource attributes (JSON)",
+			},
 			"restrict_member_access": schema.BoolAttribute{
 				Optional:            true,
 				MarkdownDescription: "Restrict member access",
@@ -286,9 +367,17 @@ func (m *MarketplaceResourceFiltersModel) GetSchema() schema.SingleNestedAttribu
 				Optional:            true,
 				MarkdownDescription: "Runtime state",
 			},
+			"scope": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Filter by scope URL.",
+			},
 			"service_manager_uuid": schema.StringAttribute{
 				Optional:            true,
 				MarkdownDescription: "Service manager UUID",
+			},
+			"slug": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Slug",
 			},
 			"usage_based": schema.BoolAttribute{
 				Optional:            true,
@@ -319,24 +408,29 @@ type MarketplaceResourceModel struct {
 	EffectiveId               types.String      `tfsdk:"effective_id"`
 	EndDate                   types.String      `tfsdk:"end_date"`
 	EndDateRequestedBy        types.String      `tfsdk:"end_date_requested_by"`
+	EndDateUpdatedAt          timetypes.RFC3339 `tfsdk:"end_date_updated_at"`
 	Endpoints                 types.List        `tfsdk:"endpoints"`
 	ErrorMessage              types.String      `tfsdk:"error_message"`
+	HasApiKeys                types.Bool        `tfsdk:"has_api_keys"`
 	LastSync                  timetypes.RFC3339 `tfsdk:"last_sync"`
 	LimitUsage                types.Map         `tfsdk:"limit_usage"`
 	Limits                    types.Map         `tfsdk:"limits"`
 	Name                      types.String      `tfsdk:"name"`
 	Offering                  types.String      `tfsdk:"offering"`
+	OfferingAccountSettings   types.Object      `tfsdk:"offering_account_settings"`
 	OfferingBackendId         types.String      `tfsdk:"offering_backend_id"`
 	OfferingBillable          types.Bool        `tfsdk:"offering_billable"`
 	OfferingComponents        types.List        `tfsdk:"offering_components"`
 	OfferingDescription       types.String      `tfsdk:"offering_description"`
 	OfferingImage             types.String      `tfsdk:"offering_image"`
+	OfferingPluginOptions     types.Map         `tfsdk:"offering_plugin_options"`
 	OfferingShared            types.Bool        `tfsdk:"offering_shared"`
 	OfferingSlug              types.String      `tfsdk:"offering_slug"`
 	OfferingState             types.String      `tfsdk:"offering_state"`
 	OfferingThumbnail         types.String      `tfsdk:"offering_thumbnail"`
 	OfferingType              types.String      `tfsdk:"offering_type"`
 	OfferingUuid              types.String      `tfsdk:"offering_uuid"`
+	Options                   types.Map         `tfsdk:"options"`
 	OrderInProgress           types.Object      `tfsdk:"order_in_progress"`
 	ParentName                types.String      `tfsdk:"parent_name"`
 	ParentOfferingName        types.String      `tfsdk:"parent_offering_name"`
@@ -351,14 +445,19 @@ type MarketplaceResourceModel struct {
 	PlanUuid                  types.String      `tfsdk:"plan_uuid"`
 	Project                   types.String      `tfsdk:"project"`
 	ProjectDescription        types.String      `tfsdk:"project_description"`
+	ProjectEffectiveEndDate   types.String      `tfsdk:"project_effective_end_date"`
 	ProjectEndDate            types.String      `tfsdk:"project_end_date"`
 	ProjectEndDateRequestedBy types.String      `tfsdk:"project_end_date_requested_by"`
+	ProjectIsInGracePeriod    types.Bool        `tfsdk:"project_is_in_grace_period"`
 	ProjectSlug               types.String      `tfsdk:"project_slug"`
+	ProjectStartDate          types.String      `tfsdk:"project_start_date"`
+	ProviderDescription       types.String      `tfsdk:"provider_description"`
 	ProviderName              types.String      `tfsdk:"provider_name"`
 	ProviderSlug              types.String      `tfsdk:"provider_slug"`
 	ProviderUuid              types.String      `tfsdk:"provider_uuid"`
 	RenewalDate               types.Map         `tfsdk:"renewal_date"`
 	Report                    types.List        `tfsdk:"report"`
+	ResourceEffectiveEndDate  types.String      `tfsdk:"resource_effective_end_date"`
 	ResourceType              types.String      `tfsdk:"resource_type"`
 	ResourceUuid              types.String      `tfsdk:"resource_uuid"`
 	RestrictMemberAccess      types.Bool        `tfsdk:"restrict_member_access"`
@@ -366,6 +465,7 @@ type MarketplaceResourceModel struct {
 	Slug                      types.String      `tfsdk:"slug"`
 	State                     types.String      `tfsdk:"state"`
 	Url                       types.String      `tfsdk:"url"`
+	UsageLimitRestriction     types.String      `tfsdk:"usage_limit_restriction"`
 	UserRequiresReconsent     types.Bool        `tfsdk:"user_requires_reconsent"`
 	Username                  types.String      `tfsdk:"username"`
 }
@@ -404,6 +504,10 @@ func (model *MarketplaceResourceModel) CopyFrom(ctx context.Context, apiResp Mar
 
 	model.EndDateRequestedBy = common.StringPointerValue(apiResp.EndDateRequestedBy)
 
+	valEndDateUpdatedAt, diagsEndDateUpdatedAt := timetypes.NewRFC3339PointerValue(apiResp.EndDateUpdatedAt)
+	diags.Append(diagsEndDateUpdatedAt...)
+	model.EndDateUpdatedAt = valEndDateUpdatedAt
+
 	if apiResp.Endpoints != nil {
 		valEndpoints, diagsEndpoints := types.ListValueFrom(ctx, NestedEndpointType(), apiResp.Endpoints)
 		diags.Append(diagsEndpoints...)
@@ -413,6 +517,8 @@ func (model *MarketplaceResourceModel) CopyFrom(ctx context.Context, apiResp Mar
 	}
 
 	model.ErrorMessage = common.StringPointerValue(apiResp.ErrorMessage)
+
+	model.HasApiKeys = types.BoolPointerValue(apiResp.HasApiKeys)
 
 	valLastSync, diagsLastSync := timetypes.NewRFC3339PointerValue(apiResp.LastSync)
 	diags.Append(diagsLastSync...)
@@ -427,16 +533,24 @@ func (model *MarketplaceResourceModel) CopyFrom(ctx context.Context, apiResp Mar
 	}
 
 	if apiResp.Limits != nil {
-		valLimits, diagsLimits := types.MapValueFrom(ctx, types.Int64Type, apiResp.Limits)
+		valLimits, diagsLimits := types.MapValueFrom(ctx, types.Float64Type, apiResp.Limits)
 		diags.Append(diagsLimits...)
 		model.Limits = valLimits
 	} else {
-		model.Limits = types.MapNull(types.Int64Type)
+		model.Limits = types.MapNull(types.Float64Type)
 	}
 
 	model.Name = common.StringPointerValue(apiResp.Name)
 
 	model.Offering = common.StringPointerValue(apiResp.Offering)
+
+	if apiResp.OfferingAccountSettings != nil {
+		valOfferingAccountSettings, diagsOfferingAccountSettings := types.ObjectValueFrom(ctx, OfferingAccountSettingsType().AttrTypes, *apiResp.OfferingAccountSettings)
+		diags.Append(diagsOfferingAccountSettings...)
+		model.OfferingAccountSettings = valOfferingAccountSettings
+	} else {
+		model.OfferingAccountSettings = types.ObjectNull(OfferingAccountSettingsType().AttrTypes)
+	}
 
 	model.OfferingBackendId = common.StringPointerValue(apiResp.OfferingBackendId)
 
@@ -454,6 +568,14 @@ func (model *MarketplaceResourceModel) CopyFrom(ctx context.Context, apiResp Mar
 
 	model.OfferingImage = common.StringPointerValue(apiResp.OfferingImage)
 
+	if apiResp.OfferingPluginOptions != nil {
+		valOfferingPluginOptions, diagsOfferingPluginOptions := types.MapValueFrom(ctx, types.StringType, apiResp.OfferingPluginOptions)
+		diags.Append(diagsOfferingPluginOptions...)
+		model.OfferingPluginOptions = valOfferingPluginOptions
+	} else {
+		model.OfferingPluginOptions = types.MapNull(types.StringType)
+	}
+
 	model.OfferingShared = types.BoolPointerValue(apiResp.OfferingShared)
 
 	model.OfferingSlug = common.StringPointerValue(apiResp.OfferingSlug)
@@ -465,6 +587,14 @@ func (model *MarketplaceResourceModel) CopyFrom(ctx context.Context, apiResp Mar
 	model.OfferingType = common.StringPointerValue(apiResp.OfferingType)
 
 	model.OfferingUuid = common.StringPointerValue(apiResp.OfferingUuid)
+
+	if apiResp.Options != nil {
+		valOptions, diagsOptions := types.MapValueFrom(ctx, types.StringType, apiResp.Options)
+		diags.Append(diagsOptions...)
+		model.Options = valOptions
+	} else {
+		model.Options = types.MapNull(types.StringType)
+	}
 
 	if apiResp.OrderInProgress != nil {
 		valOrderInProgress, diagsOrderInProgress := types.ObjectValueFrom(ctx, OrderInProgressType().AttrTypes, *apiResp.OrderInProgress)
@@ -500,11 +630,19 @@ func (model *MarketplaceResourceModel) CopyFrom(ctx context.Context, apiResp Mar
 
 	model.ProjectDescription = common.StringPointerValue(apiResp.ProjectDescription)
 
+	model.ProjectEffectiveEndDate = common.StringPointerValue(apiResp.ProjectEffectiveEndDate)
+
 	model.ProjectEndDate = common.StringPointerValue(apiResp.ProjectEndDate)
 
 	model.ProjectEndDateRequestedBy = common.StringPointerValue(apiResp.ProjectEndDateRequestedBy)
 
+	model.ProjectIsInGracePeriod = types.BoolPointerValue(apiResp.ProjectIsInGracePeriod)
+
 	model.ProjectSlug = common.StringPointerValue(apiResp.ProjectSlug)
+
+	model.ProjectStartDate = common.StringPointerValue(apiResp.ProjectStartDate)
+
+	model.ProviderDescription = common.StringPointerValue(apiResp.ProviderDescription)
 
 	model.ProviderName = common.StringPointerValue(apiResp.ProviderName)
 
@@ -528,6 +666,8 @@ func (model *MarketplaceResourceModel) CopyFrom(ctx context.Context, apiResp Mar
 		model.Report = types.ListNull(ReportSectionType())
 	}
 
+	model.ResourceEffectiveEndDate = common.StringPointerValue(apiResp.ResourceEffectiveEndDate)
+
 	model.ResourceType = common.StringPointerValue(apiResp.ResourceType)
 
 	model.ResourceUuid = common.StringPointerValue(apiResp.ResourceUuid)
@@ -541,6 +681,8 @@ func (model *MarketplaceResourceModel) CopyFrom(ctx context.Context, apiResp Mar
 	model.State = common.StringPointerValue(apiResp.State)
 
 	model.Url = common.StringPointerValue(apiResp.Url)
+
+	model.UsageLimitRestriction = common.StringPointerValue(apiResp.UsageLimitRestriction)
 
 	model.UserRequiresReconsent = types.BoolPointerValue(apiResp.UserRequiresReconsent)
 

@@ -24,8 +24,10 @@ type MarketplaceOrderFiltersModel struct {
 	CanApproveAsProvider types.Bool   `tfsdk:"can_approve_as_provider"`
 	CategoryUuid         types.String `tfsdk:"category_uuid"`
 	Created              types.String `tfsdk:"created"`
+	CreatedBefore        types.String `tfsdk:"created_before"`
 	CustomerUuid         types.String `tfsdk:"customer_uuid"`
 	Modified             types.String `tfsdk:"modified"`
+	ModifiedBefore       types.String `tfsdk:"modified_before"`
 	Offering             types.String `tfsdk:"offering"`
 	OfferingUuid         types.String `tfsdk:"offering_uuid"`
 	ParentOfferingUuid   types.String `tfsdk:"parent_offering_uuid"`
@@ -36,6 +38,8 @@ type MarketplaceOrderFiltersModel struct {
 	ResourceName         types.String `tfsdk:"resource_name"`
 	ResourceUuid         types.String `tfsdk:"resource_uuid"`
 	ServiceManagerUuid   types.String `tfsdk:"service_manager_uuid"`
+	Slug                 types.String `tfsdk:"slug"`
+	WasAutoApproved      types.Bool   `tfsdk:"was_auto_approved"`
 }
 
 func (m *MarketplaceOrderFiltersModel) GetSchema() schema.SingleNestedAttribute {
@@ -59,6 +63,10 @@ func (m *MarketplaceOrderFiltersModel) GetSchema() schema.SingleNestedAttribute 
 				Optional:            true,
 				MarkdownDescription: "Created after",
 			},
+			"created_before": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Created before",
+			},
 			"customer_uuid": schema.StringAttribute{
 				Optional:            true,
 				MarkdownDescription: "Customer UUID",
@@ -66,6 +74,10 @@ func (m *MarketplaceOrderFiltersModel) GetSchema() schema.SingleNestedAttribute 
 			"modified": schema.StringAttribute{
 				Optional:            true,
 				MarkdownDescription: "Modified after",
+			},
+			"modified_before": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Modified before",
 			},
 			"offering": schema.StringAttribute{
 				Optional:            true,
@@ -107,74 +119,108 @@ func (m *MarketplaceOrderFiltersModel) GetSchema() schema.SingleNestedAttribute 
 				Optional:            true,
 				MarkdownDescription: "Service manager UUID",
 			},
+			"slug": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Slug",
+			},
+			"was_auto_approved": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "Auto-approved",
+			},
 		},
 	}
 }
 
 type MarketplaceOrderModel struct {
-	UUID                       types.String      `tfsdk:"id"`
-	ActivationPrice            types.Float64     `tfsdk:"activation_price"`
-	Attachment                 types.String      `tfsdk:"attachment"`
-	BackendId                  types.String      `tfsdk:"backend_id"`
-	CallbackUrl                types.String      `tfsdk:"callback_url"`
-	CanTerminate               types.Bool        `tfsdk:"can_terminate"`
-	CategoryIcon               types.String      `tfsdk:"category_icon"`
-	CategoryUuid               types.String      `tfsdk:"category_uuid"`
-	CompletedAt                timetypes.RFC3339 `tfsdk:"completed_at"`
-	ConsumerReviewedAt         timetypes.RFC3339 `tfsdk:"consumer_reviewed_at"`
-	ConsumerReviewedBy         types.String      `tfsdk:"consumer_reviewed_by"`
-	ConsumerReviewedByFullName types.String      `tfsdk:"consumer_reviewed_by_full_name"`
-	ConsumerReviewedByUsername types.String      `tfsdk:"consumer_reviewed_by_username"`
-	Cost                       types.String      `tfsdk:"cost"`
-	CreatedByCivilNumber       types.String      `tfsdk:"created_by_civil_number"`
-	CreatedByFullName          types.String      `tfsdk:"created_by_full_name"`
-	CreatedByUsername          types.String      `tfsdk:"created_by_username"`
-	CustomerSlug               types.String      `tfsdk:"customer_slug"`
-	ErrorMessage               types.String      `tfsdk:"error_message"`
-	FixedPrice                 types.Float64     `tfsdk:"fixed_price"`
-	Issue                      types.Object      `tfsdk:"issue"`
-	Limits                     types.Map         `tfsdk:"limits"`
-	MarketplaceResourceUuid    types.String      `tfsdk:"marketplace_resource_uuid"`
-	NewCostEstimate            types.String      `tfsdk:"new_cost_estimate"`
-	NewPlanName                types.String      `tfsdk:"new_plan_name"`
-	NewPlanUuid                types.String      `tfsdk:"new_plan_uuid"`
-	Offering                   types.String      `tfsdk:"offering"`
-	OfferingBillable           types.Bool        `tfsdk:"offering_billable"`
-	OfferingDescription        types.String      `tfsdk:"offering_description"`
-	OfferingImage              types.String      `tfsdk:"offering_image"`
-	OfferingShared             types.Bool        `tfsdk:"offering_shared"`
-	OfferingThumbnail          types.String      `tfsdk:"offering_thumbnail"`
-	OfferingType               types.String      `tfsdk:"offering_type"`
-	OfferingUuid               types.String      `tfsdk:"offering_uuid"`
-	OldCostEstimate            types.Float64     `tfsdk:"old_cost_estimate"`
-	OldPlanName                types.String      `tfsdk:"old_plan_name"`
-	OldPlanUuid                types.String      `tfsdk:"old_plan_uuid"`
-	OrderSubtype               types.String      `tfsdk:"order_subtype"`
-	Output                     types.String      `tfsdk:"output"`
-	Plan                       types.String      `tfsdk:"plan"`
-	PlanDescription            types.String      `tfsdk:"plan_description"`
-	PlanName                   types.String      `tfsdk:"plan_name"`
-	PlanUnit                   types.String      `tfsdk:"plan_unit"`
-	PlanUuid                   types.String      `tfsdk:"plan_uuid"`
-	ProjectDescription         types.String      `tfsdk:"project_description"`
-	ProjectSlug                types.String      `tfsdk:"project_slug"`
-	ProviderName               types.String      `tfsdk:"provider_name"`
-	ProviderReviewedAt         timetypes.RFC3339 `tfsdk:"provider_reviewed_at"`
-	ProviderReviewedBy         types.String      `tfsdk:"provider_reviewed_by"`
-	ProviderReviewedByFullName types.String      `tfsdk:"provider_reviewed_by_full_name"`
-	ProviderReviewedByUsername types.String      `tfsdk:"provider_reviewed_by_username"`
-	ProviderSlug               types.String      `tfsdk:"provider_slug"`
-	ProviderUuid               types.String      `tfsdk:"provider_uuid"`
-	RequestComment             types.String      `tfsdk:"request_comment"`
-	ResourceName               types.String      `tfsdk:"resource_name"`
-	ResourceType               types.String      `tfsdk:"resource_type"`
-	ResourceUuid               types.String      `tfsdk:"resource_uuid"`
-	Slug                       types.String      `tfsdk:"slug"`
-	StartDate                  types.String      `tfsdk:"start_date"`
-	State                      types.String      `tfsdk:"state"`
-	TerminationComment         types.String      `tfsdk:"termination_comment"`
-	Type                       types.String      `tfsdk:"type"`
-	Url                        types.String      `tfsdk:"url"`
+	UUID                              types.String      `tfsdk:"id"`
+	ActivationPrice                   types.Float64     `tfsdk:"activation_price"`
+	Attachment                        types.String      `tfsdk:"attachment"`
+	Attributes                        types.Map         `tfsdk:"attributes"`
+	AutoApproved                      types.Bool        `tfsdk:"auto_approved"`
+	AutoApprovedByRuleUuid            types.String      `tfsdk:"auto_approved_by_rule_uuid"`
+	AutoApprovedCostLimitSnapshot     types.String      `tfsdk:"auto_approved_cost_limit_snapshot"`
+	BackendId                         types.String      `tfsdk:"backend_id"`
+	CallbackUrl                       types.String      `tfsdk:"callback_url"`
+	CanTerminate                      types.Bool        `tfsdk:"can_terminate"`
+	CategoryIcon                      types.String      `tfsdk:"category_icon"`
+	CategoryUuid                      types.String      `tfsdk:"category_uuid"`
+	CompletedAt                       timetypes.RFC3339 `tfsdk:"completed_at"`
+	ConsumerMessage                   types.String      `tfsdk:"consumer_message"`
+	ConsumerMessageAttachment         types.String      `tfsdk:"consumer_message_attachment"`
+	ConsumerMessageUpdatedAt          timetypes.RFC3339 `tfsdk:"consumer_message_updated_at"`
+	ConsumerRejectionComment          types.String      `tfsdk:"consumer_rejection_comment"`
+	ConsumerReviewedAt                timetypes.RFC3339 `tfsdk:"consumer_reviewed_at"`
+	ConsumerReviewedBy                types.String      `tfsdk:"consumer_reviewed_by"`
+	ConsumerReviewedByFullName        types.String      `tfsdk:"consumer_reviewed_by_full_name"`
+	ConsumerReviewedByUsername        types.String      `tfsdk:"consumer_reviewed_by_username"`
+	Cost                              types.String      `tfsdk:"cost"`
+	CreatedByCivilNumber              types.String      `tfsdk:"created_by_civil_number"`
+	CreatedByEmail                    types.String      `tfsdk:"created_by_email"`
+	CreatedByFullName                 types.String      `tfsdk:"created_by_full_name"`
+	CreatedByOrganization             types.String      `tfsdk:"created_by_organization"`
+	CreatedByOrganizationAddress      types.String      `tfsdk:"created_by_organization_address"`
+	CreatedByOrganizationCountry      types.String      `tfsdk:"created_by_organization_country"`
+	CreatedByOrganizationRegistryCode types.String      `tfsdk:"created_by_organization_registry_code"`
+	CreatedByOrganizationVatCode      types.String      `tfsdk:"created_by_organization_vat_code"`
+	CreatedByUsername                 types.String      `tfsdk:"created_by_username"`
+	CustomerSlug                      types.String      `tfsdk:"customer_slug"`
+	ErrorMessage                      types.String      `tfsdk:"error_message"`
+	ErrorUpdatedAt                    timetypes.RFC3339 `tfsdk:"error_updated_at"`
+	FixedPrice                        types.Float64     `tfsdk:"fixed_price"`
+	Issue                             types.Object      `tfsdk:"issue"`
+	Limits                            types.Map         `tfsdk:"limits"`
+	MarketplaceResourceUuid           types.String      `tfsdk:"marketplace_resource_uuid"`
+	NewCostEstimate                   types.String      `tfsdk:"new_cost_estimate"`
+	NewPlanBillingMode                types.String      `tfsdk:"new_plan_billing_mode"`
+	NewPlanName                       types.String      `tfsdk:"new_plan_name"`
+	NewPlanUuid                       types.String      `tfsdk:"new_plan_uuid"`
+	Offering                          types.String      `tfsdk:"offering"`
+	OfferingBillable                  types.Bool        `tfsdk:"offering_billable"`
+	OfferingDescription               types.String      `tfsdk:"offering_description"`
+	OfferingImage                     types.String      `tfsdk:"offering_image"`
+	OfferingPluginOptions             types.Map         `tfsdk:"offering_plugin_options"`
+	OfferingShared                    types.Bool        `tfsdk:"offering_shared"`
+	OfferingThumbnail                 types.String      `tfsdk:"offering_thumbnail"`
+	OfferingType                      types.String      `tfsdk:"offering_type"`
+	OfferingUuid                      types.String      `tfsdk:"offering_uuid"`
+	OldCostEstimate                   types.Float64     `tfsdk:"old_cost_estimate"`
+	OldPlanBillingMode                types.String      `tfsdk:"old_plan_billing_mode"`
+	OldPlanName                       types.String      `tfsdk:"old_plan_name"`
+	OldPlanUuid                       types.String      `tfsdk:"old_plan_uuid"`
+	OrderSubtype                      types.String      `tfsdk:"order_subtype"`
+	Output                            types.String      `tfsdk:"output"`
+	OutputUpdatedAt                   timetypes.RFC3339 `tfsdk:"output_updated_at"`
+	Plan                              types.String      `tfsdk:"plan"`
+	PlanDescription                   types.String      `tfsdk:"plan_description"`
+	PlanName                          types.String      `tfsdk:"plan_name"`
+	PlanUnit                          types.String      `tfsdk:"plan_unit"`
+	PlanUuid                          types.String      `tfsdk:"plan_uuid"`
+	ProjectDescription                types.String      `tfsdk:"project_description"`
+	ProjectSlug                       types.String      `tfsdk:"project_slug"`
+	ProviderDescription               types.String      `tfsdk:"provider_description"`
+	ProviderMessage                   types.String      `tfsdk:"provider_message"`
+	ProviderMessageAttachment         types.String      `tfsdk:"provider_message_attachment"`
+	ProviderMessageUpdatedAt          timetypes.RFC3339 `tfsdk:"provider_message_updated_at"`
+	ProviderMessageUrl                types.String      `tfsdk:"provider_message_url"`
+	ProviderName                      types.String      `tfsdk:"provider_name"`
+	ProviderRejectionComment          types.String      `tfsdk:"provider_rejection_comment"`
+	ProviderReviewedAt                timetypes.RFC3339 `tfsdk:"provider_reviewed_at"`
+	ProviderReviewedBy                types.String      `tfsdk:"provider_reviewed_by"`
+	ProviderReviewedByFullName        types.String      `tfsdk:"provider_reviewed_by_full_name"`
+	ProviderReviewedByUsername        types.String      `tfsdk:"provider_reviewed_by_username"`
+	ProviderSlug                      types.String      `tfsdk:"provider_slug"`
+	ProviderUuid                      types.String      `tfsdk:"provider_uuid"`
+	RequestComment                    types.String      `tfsdk:"request_comment"`
+	ResourceEndDate                   types.String      `tfsdk:"resource_end_date"`
+	ResourceName                      types.String      `tfsdk:"resource_name"`
+	ResourceType                      types.String      `tfsdk:"resource_type"`
+	ResourceUuid                      types.String      `tfsdk:"resource_uuid"`
+	Slug                              types.String      `tfsdk:"slug"`
+	StartDate                         types.String      `tfsdk:"start_date"`
+	State                             types.String      `tfsdk:"state"`
+	TerminationComment                types.String      `tfsdk:"termination_comment"`
+	Type                              types.String      `tfsdk:"type"`
+	Url                               types.String      `tfsdk:"url"`
 }
 
 // CopyFrom maps the API response to the model fields.
@@ -186,6 +232,20 @@ func (model *MarketplaceOrderModel) CopyFrom(ctx context.Context, apiResp Market
 	model.ActivationPrice = types.Float64PointerValue(apiResp.ActivationPrice.Float64Ptr())
 
 	model.Attachment = common.StringPointerValue(apiResp.Attachment)
+
+	if apiResp.Attributes != nil {
+		valAttributes, diagsAttributes := types.MapValueFrom(ctx, types.StringType, apiResp.Attributes)
+		diags.Append(diagsAttributes...)
+		model.Attributes = valAttributes
+	} else {
+		model.Attributes = types.MapNull(types.StringType)
+	}
+
+	model.AutoApproved = types.BoolPointerValue(apiResp.AutoApproved)
+
+	model.AutoApprovedByRuleUuid = common.StringPointerValue(apiResp.AutoApprovedByRuleUuid)
+
+	model.AutoApprovedCostLimitSnapshot = common.StringPointerValue(apiResp.AutoApprovedCostLimitSnapshot)
 
 	model.BackendId = common.StringPointerValue(apiResp.BackendId)
 
@@ -201,6 +261,16 @@ func (model *MarketplaceOrderModel) CopyFrom(ctx context.Context, apiResp Market
 	diags.Append(diagsCompletedAt...)
 	model.CompletedAt = valCompletedAt
 
+	model.ConsumerMessage = common.StringPointerValue(apiResp.ConsumerMessage)
+
+	model.ConsumerMessageAttachment = common.StringPointerValue(apiResp.ConsumerMessageAttachment)
+
+	valConsumerMessageUpdatedAt, diagsConsumerMessageUpdatedAt := timetypes.NewRFC3339PointerValue(apiResp.ConsumerMessageUpdatedAt)
+	diags.Append(diagsConsumerMessageUpdatedAt...)
+	model.ConsumerMessageUpdatedAt = valConsumerMessageUpdatedAt
+
+	model.ConsumerRejectionComment = common.StringPointerValue(apiResp.ConsumerRejectionComment)
+
 	valConsumerReviewedAt, diagsConsumerReviewedAt := timetypes.NewRFC3339PointerValue(apiResp.ConsumerReviewedAt)
 	diags.Append(diagsConsumerReviewedAt...)
 	model.ConsumerReviewedAt = valConsumerReviewedAt
@@ -215,13 +285,29 @@ func (model *MarketplaceOrderModel) CopyFrom(ctx context.Context, apiResp Market
 
 	model.CreatedByCivilNumber = common.StringPointerValue(apiResp.CreatedByCivilNumber)
 
+	model.CreatedByEmail = common.StringPointerValue(apiResp.CreatedByEmail)
+
 	model.CreatedByFullName = common.StringPointerValue(apiResp.CreatedByFullName)
+
+	model.CreatedByOrganization = common.StringPointerValue(apiResp.CreatedByOrganization)
+
+	model.CreatedByOrganizationAddress = common.StringPointerValue(apiResp.CreatedByOrganizationAddress)
+
+	model.CreatedByOrganizationCountry = common.StringPointerValue(apiResp.CreatedByOrganizationCountry)
+
+	model.CreatedByOrganizationRegistryCode = common.StringPointerValue(apiResp.CreatedByOrganizationRegistryCode)
+
+	model.CreatedByOrganizationVatCode = common.StringPointerValue(apiResp.CreatedByOrganizationVatCode)
 
 	model.CreatedByUsername = common.StringPointerValue(apiResp.CreatedByUsername)
 
 	model.CustomerSlug = common.StringPointerValue(apiResp.CustomerSlug)
 
 	model.ErrorMessage = common.StringPointerValue(apiResp.ErrorMessage)
+
+	valErrorUpdatedAt, diagsErrorUpdatedAt := timetypes.NewRFC3339PointerValue(apiResp.ErrorUpdatedAt)
+	diags.Append(diagsErrorUpdatedAt...)
+	model.ErrorUpdatedAt = valErrorUpdatedAt
 
 	model.FixedPrice = types.Float64PointerValue(apiResp.FixedPrice.Float64Ptr())
 
@@ -234,16 +320,18 @@ func (model *MarketplaceOrderModel) CopyFrom(ctx context.Context, apiResp Market
 	}
 
 	if apiResp.Limits != nil {
-		valLimits, diagsLimits := types.MapValueFrom(ctx, types.Int64Type, apiResp.Limits)
+		valLimits, diagsLimits := types.MapValueFrom(ctx, types.Float64Type, apiResp.Limits)
 		diags.Append(diagsLimits...)
 		model.Limits = valLimits
 	} else {
-		model.Limits = types.MapNull(types.Int64Type)
+		model.Limits = types.MapNull(types.Float64Type)
 	}
 
 	model.MarketplaceResourceUuid = common.StringPointerValue(apiResp.MarketplaceResourceUuid)
 
 	model.NewCostEstimate = common.StringPointerValue(apiResp.NewCostEstimate)
+
+	model.NewPlanBillingMode = common.StringPointerValue(apiResp.NewPlanBillingMode)
 
 	model.NewPlanName = common.StringPointerValue(apiResp.NewPlanName)
 
@@ -257,6 +345,14 @@ func (model *MarketplaceOrderModel) CopyFrom(ctx context.Context, apiResp Market
 
 	model.OfferingImage = common.StringPointerValue(apiResp.OfferingImage)
 
+	if apiResp.OfferingPluginOptions != nil {
+		valOfferingPluginOptions, diagsOfferingPluginOptions := types.MapValueFrom(ctx, types.StringType, apiResp.OfferingPluginOptions)
+		diags.Append(diagsOfferingPluginOptions...)
+		model.OfferingPluginOptions = valOfferingPluginOptions
+	} else {
+		model.OfferingPluginOptions = types.MapNull(types.StringType)
+	}
+
 	model.OfferingShared = types.BoolPointerValue(apiResp.OfferingShared)
 
 	model.OfferingThumbnail = common.StringPointerValue(apiResp.OfferingThumbnail)
@@ -267,6 +363,8 @@ func (model *MarketplaceOrderModel) CopyFrom(ctx context.Context, apiResp Market
 
 	model.OldCostEstimate = types.Float64PointerValue(apiResp.OldCostEstimate.Float64Ptr())
 
+	model.OldPlanBillingMode = common.StringPointerValue(apiResp.OldPlanBillingMode)
+
 	model.OldPlanName = common.StringPointerValue(apiResp.OldPlanName)
 
 	model.OldPlanUuid = common.StringPointerValue(apiResp.OldPlanUuid)
@@ -274,6 +372,10 @@ func (model *MarketplaceOrderModel) CopyFrom(ctx context.Context, apiResp Market
 	model.OrderSubtype = common.StringPointerValue(apiResp.OrderSubtype)
 
 	model.Output = common.StringPointerValue(apiResp.Output)
+
+	valOutputUpdatedAt, diagsOutputUpdatedAt := timetypes.NewRFC3339PointerValue(apiResp.OutputUpdatedAt)
+	diags.Append(diagsOutputUpdatedAt...)
+	model.OutputUpdatedAt = valOutputUpdatedAt
 
 	model.Plan = common.StringPointerValue(apiResp.Plan)
 
@@ -289,7 +391,21 @@ func (model *MarketplaceOrderModel) CopyFrom(ctx context.Context, apiResp Market
 
 	model.ProjectSlug = common.StringPointerValue(apiResp.ProjectSlug)
 
+	model.ProviderDescription = common.StringPointerValue(apiResp.ProviderDescription)
+
+	model.ProviderMessage = common.StringPointerValue(apiResp.ProviderMessage)
+
+	model.ProviderMessageAttachment = common.StringPointerValue(apiResp.ProviderMessageAttachment)
+
+	valProviderMessageUpdatedAt, diagsProviderMessageUpdatedAt := timetypes.NewRFC3339PointerValue(apiResp.ProviderMessageUpdatedAt)
+	diags.Append(diagsProviderMessageUpdatedAt...)
+	model.ProviderMessageUpdatedAt = valProviderMessageUpdatedAt
+
+	model.ProviderMessageUrl = common.StringPointerValue(apiResp.ProviderMessageUrl)
+
 	model.ProviderName = common.StringPointerValue(apiResp.ProviderName)
+
+	model.ProviderRejectionComment = common.StringPointerValue(apiResp.ProviderRejectionComment)
 
 	valProviderReviewedAt, diagsProviderReviewedAt := timetypes.NewRFC3339PointerValue(apiResp.ProviderReviewedAt)
 	diags.Append(diagsProviderReviewedAt...)
@@ -306,6 +422,8 @@ func (model *MarketplaceOrderModel) CopyFrom(ctx context.Context, apiResp Market
 	model.ProviderUuid = common.StringPointerValue(apiResp.ProviderUuid)
 
 	model.RequestComment = common.StringPointerValue(apiResp.RequestComment)
+
+	model.ResourceEndDate = common.StringPointerValue(apiResp.ResourceEndDate)
 
 	model.ResourceName = common.StringPointerValue(apiResp.ResourceName)
 

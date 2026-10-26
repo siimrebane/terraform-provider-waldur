@@ -1,17 +1,13 @@
 # Terraform Provider for Waldur (siimrebane fork)
 
-A Terraform provider for managing OpenStack infrastructure on
-[Waldur](https://waldur.com/) — Estonia's national academic
-research-computing platform [ETAIS](https://etais.ee/) is the most
-common deployment.
+A Terraform provider for [Waldur](https://waldur.com/), the platform behind
+Estonia's academic cloud [ETAIS](https://etais.ee/) (`minu.etais.ee`).
 
 This is a fork of the upstream
-[`waldur/terraform-provider-waldur`](https://github.com/waldur/terraform-provider-waldur)
-generator output, with three additional fixes applied so that
-end-to-end use against ETAIS works without manual workarounds.
-The fork was developed as part of a Tallinn University of Technology
-master's thesis on automated IaC provisioning for university CS
-courses; the fixes are queued for upstream PR submission.
+[`waldur/terraform-provider-waldur`](https://github.com/waldur/terraform-provider-waldur).
+Version 0.3.x is upstream **v8.1.3** plus the two patches below. Earlier fork
+versions (0.1.x, 0.2.x) were based on upstream v0.0.8; see the
+[changelog](CHANGELOG.md) for what was dropped.
 
 ## Installation
 
@@ -20,7 +16,7 @@ terraform {
   required_providers {
     waldur = {
       source  = "siimrebane/waldur"
-      version = "~> 0.1"
+      version = "~> 0.3"
     }
   }
 }
@@ -31,106 +27,66 @@ provider "waldur" {
 }
 ```
 
-Then `terraform init` downloads the provider from the
+`terraform init` downloads the provider from the
 [Terraform Registry](https://registry.terraform.io/providers/siimrebane/waldur).
+Coming from 0.2.x: `terraform init -upgrade`, and drop any
+`lifecycle { ignore_changes = [security_groups] }` the 0.2.x workaround needed.
 
-## What this fork adds
+## What this fork changes
 
-Three fixes on top of `waldur/waldur` v0.0.8 that the upstream
-provider does not yet have. Each is a focused change in the
-generator templates rather than a hand-edit of generated code, so
-the upstream code generator can absorb the patches as-is.
+Both patches concern `security_groups` on `waldur_openstack_instance`.
+Files: `services/openstack/instance/security_groups.go`,
+`internal/sdk/common/instance_cascade.go`, and the call sites in
+`services/openstack/instance/resource.go`.
 
-### 1. `waldur_marketplace_offering` data source no longer crashes on `future_prices`
+### 1. The groups reach the instance's ports
 
-Upstream emits `FuturePrices map[string]float64` for the
-`future_prices` field in offering responses. ETAIS sometimes
-returns the values as quoted strings, so the data source crashed on
-deserialisation and every Terraform configuration had to hardcode
-the offering URL.
+Waldur records the groups you list on the instance, but it does not put
+them on the instance's Neutron port, and the port is what enforces traffic.
+On ETAIS a port without security groups gets no DHCP lease: the machine
+boots without an address and is unreachable. After create, and after an
+`update_security_groups` action, this fork pushes the listed groups plus the
+tenant's `default` group to every port of the instance.
 
-This fork extends the existing `FlexibleNumber` substitution to
-cover map-of-number response fields. After regeneration the data
-source resolves cleanly:
+### 2. A clean plan
 
-```hcl
-data "waldur_marketplace_offering" "vm" {
-  filters = {
-    type       = "OpenStack.Instance"
-    name_exact = "Virtual machine in my-tenant"
-  }
-}
-
-resource "waldur_openstack_instance" "vm" {
-  offering = data.waldur_marketplace_offering.vm.url
-  # ...
-}
-```
-
-### 2. `security_groups` actually applied at create time
-
-Upstream silently dropped `security_groups` set on
-`waldur_openstack_instance`. The nested `url` attribute was marked
-`Computed` so the field could not be written from HCL, and even
-when applied via a workaround the change updated only the Waldur
-instance record — not the underlying Neutron port, which is what
-actually enforces traffic.
-
-This fork makes the nested attributes writable, dispatches the
-`update_security_groups` action after order completion, and
-includes a `CascadeInstanceSecurityGroupsToPorts` helper that
-walks the new instance's ports and pushes the security groups
-(plus the tenant's `default` group) at the port level. Result: a
-single `terraform apply` produces an SSH-reachable VM with no
-manual web-UI step.
+The API answers with full security-group objects (name, description, rules,
+state) and always includes the tenant's implicit `default` group, while the
+configuration lists `{ url = ... }` only. A set attribute compares whole
+elements, so upstream stores the API's objects and every refresh plans the
+set as changed. This fork stores the groups the way the configuration wrote
+them, url only and without the implicit `default` group unless it was
+listed, and sends the action the planned urls.
 
 ```hcl
 resource "waldur_openstack_instance" "vm" {
   # ...
   security_groups = [
-    { url = data.waldur_openstack_security_group.ssh.url },
-    { url = data.waldur_openstack_security_group.web.url },
+    { url = "https://minu.etais.ee/api/openstack-security-groups/<uuid>/" },  # ssh
+    { url = "https://minu.etais.ee/api/openstack-security-groups/<uuid>/" },  # ping
   ]
 }
 ```
 
-### 3. In-place flavour change instead of destroy-and-recreate
+Verified against ETAIS (2026-10-26): create, SSH in, a second plan with no
+changes, adding and removing a group through `update_security_groups`, a
+clean plan again, destroy. A control build without patch 1 produced a
+machine with no groups on its port and no DHCP lease.
 
-Upstream marks `flavor` as `ForceNew`, so editing it in HCL
-destroys the VM and creates a new one — losing the floating IP,
-the boot volume, and any state on disk. The Waldur API has a
-`change_flavor` action; this fork wires it up.
+### Dropped from the 0.2.x fork
 
-The included `ChangeInstanceFlavorWithStopStart` helper handles
-the multi-step ceremony Waldur requires (snapshot security groups,
-stop instance, change flavour, wait, start, restore snapshot).
-Resizing is now a normal `terraform apply` away.
+- `change_flavor` in place (stop, change flavour, start): not in upstream,
+  not kept. A flavour change follows upstream's behaviour.
+- The `future_prices` string-or-number fix: upstream now types the field as
+  strings, so the `waldur_marketplace_offering` data source reads cleanly.
+- 0.2.1's action-body fix (`{"security_groups": [urls]}`) is in upstream.
 
-## Provider configuration
+## Everything else
 
-| Argument | Description |
-|---|---|
-| `endpoint` | Waldur API base URL (e.g. `https://minu.etais.ee`) |
-| `token` | API token issued from your Waldur user profile |
-
-## Status
-
-| Fix | Status |
-|---|---|
-| `future_prices` deserialisation | Implemented, verified end-to-end against ETAIS |
-| Security-group cascade | Implemented, verified end-to-end against ETAIS |
-| In-place flavour change | Implemented, verified end-to-end against ETAIS (`start_time` consistency follow-up noted) |
-
-## Source generator
-
-The provider is generated by a fork of the official Waldur
-generator at
-[`siimrebane/terraform-provider-waldur-generator`](https://github.com/siimrebane/terraform-provider-waldur-generator).
-Each fix lives on its own branch (`fix/future-prices-string-or-number`,
-`fix/security-groups-post-create`,
-`fix/instance-change-flavor-in-place`) ready for upstream PR;
-a `release` branch combines them.
+Resources, data sources and their attributes are upstream's, generated from
+Waldur's OpenAPI schema; see `docs/` and the upstream
+[changelog](CHANGELOG.md) for the attribute history.
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).

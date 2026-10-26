@@ -27,6 +27,43 @@ func init() {
 	}
 }
 
+type AccountSetting struct {
+	Inherited *AccountSettingInherited `json:"inherited,omitempty" tfsdk:"inherited"`
+
+	Source *string `json:"source,omitempty" tfsdk:"source"`
+
+	Value *string `json:"value,omitempty" tfsdk:"value"`
+}
+type AccountSettingInherited struct {
+	Source *string `json:"source,omitempty" tfsdk:"source"`
+
+	Value *string `json:"value,omitempty" tfsdk:"value"`
+}
+
+type AffiliatedOrganization struct {
+	Abbreviation *string `json:"abbreviation,omitempty" tfsdk:"abbreviation"`
+
+	Address *string `json:"address,omitempty" tfsdk:"address"`
+
+	Code *string `json:"code,omitempty" tfsdk:"code"`
+
+	Country *string `json:"country,omitempty" tfsdk:"country"`
+
+	Description *string `json:"description,omitempty" tfsdk:"description"`
+
+	Email *string `json:"email,omitempty" tfsdk:"email"`
+
+	Homepage *string `json:"homepage,omitempty" tfsdk:"homepage"`
+
+	Name *string `json:"name,omitempty" tfsdk:"name"`
+
+	ProjectsCount *int64 `json:"projects_count,omitempty" tfsdk:"projects_count"`
+
+	Url *string `json:"url,omitempty" tfsdk:"url"`
+
+	Uuid *string `json:"uuid,omitempty" tfsdk:"uuid"`
+}
+
 type BasePublicPlan struct {
 	Archived *bool `json:"archived,omitempty" tfsdk:"archived"`
 
@@ -34,19 +71,19 @@ type BasePublicPlan struct {
 
 	BackendId *string `json:"backend_id,omitempty" tfsdk:"backend_id"`
 
+	BillingMode *string `json:"billing_mode,omitempty" tfsdk:"billing_mode"`
+
 	Components *[]NestedPlanComponent `json:"components,omitempty" tfsdk:"components"`
 
 	Description *string `json:"description,omitempty" tfsdk:"description"`
 
-	FuturePrices map[string]FlexibleNumber `json:"future_prices,omitempty" tfsdk:"future_prices"`
+	FuturePrices map[string]string `json:"future_prices,omitempty" tfsdk:"future_prices"`
 
 	InitPrice FlexibleNumber `json:"init_price,omitempty" tfsdk:"init_price"`
 
 	IsActive *bool `json:"is_active,omitempty" tfsdk:"is_active"`
 
 	MaxAmount *int64 `json:"max_amount,omitempty" tfsdk:"max_amount"`
-
-	MinimalPrice FlexibleNumber `json:"minimal_price,omitempty" tfsdk:"minimal_price"`
 
 	Name *string `json:"name,omitempty" tfsdk:"name"`
 
@@ -56,7 +93,7 @@ type BasePublicPlan struct {
 
 	Prices map[string]string `json:"prices,omitempty" tfsdk:"prices"`
 
-	Quotas map[string]FlexibleNumber `json:"quotas,omitempty" tfsdk:"quotas"`
+	Quotas map[string]int64 `json:"quotas,omitempty" tfsdk:"quotas"`
 
 	ResourcesCount *int64 `json:"resources_count,omitempty" tfsdk:"resources_count"`
 
@@ -107,6 +144,14 @@ type NestedEndpoint struct {
 	Uuid *string `json:"uuid,omitempty" tfsdk:"uuid"`
 }
 
+type NestedOfferingAccessSubnet struct {
+	Description *string `json:"description,omitempty" tfsdk:"description"`
+
+	Inet *string `json:"inet,omitempty" tfsdk:"inet"`
+
+	Uuid *string `json:"uuid,omitempty" tfsdk:"uuid"`
+}
+
 type NestedOfferingFile struct {
 	File *string `json:"file,omitempty" tfsdk:"file"`
 
@@ -114,6 +159,8 @@ type NestedOfferingFile struct {
 }
 
 type NestedPartition struct {
+	CpuArch *string `json:"cpu_arch,omitempty" tfsdk:"cpu_arch"`
+
 	CpuBind *int64 `json:"cpu_bind,omitempty" tfsdk:"cpu_bind"`
 
 	DefCpuPerGpu *int64 `json:"def_cpu_per_gpu,omitempty" tfsdk:"def_cpu_per_gpu"`
@@ -129,6 +176,8 @@ type NestedPartition struct {
 	ExclusiveTopo *bool `json:"exclusive_topo,omitempty" tfsdk:"exclusive_topo"`
 
 	ExclusiveUser *bool `json:"exclusive_user,omitempty" tfsdk:"exclusive_user"`
+
+	GpuArch *string `json:"gpu_arch,omitempty" tfsdk:"gpu_arch"`
 
 	GraceTime *int64 `json:"grace_time,omitempty" tfsdk:"grace_time"`
 
@@ -152,7 +201,19 @@ type NestedPartition struct {
 
 	Qos *string `json:"qos,omitempty" tfsdk:"qos"`
 
+	QosOptions *[]NestedPartitionQoS `json:"qos_options,omitempty" tfsdk:"qos_options"`
+
 	ReqResv *bool `json:"req_resv,omitempty" tfsdk:"req_resv"`
+
+	Uuid *string `json:"uuid,omitempty" tfsdk:"uuid"`
+}
+
+type NestedPartitionQoS struct {
+	IsDefault *bool `json:"is_default,omitempty" tfsdk:"is_default"`
+
+	Qos *string `json:"qos,omitempty" tfsdk:"qos"`
+
+	QosName *string `json:"qos_name,omitempty" tfsdk:"qos_name"`
 
 	Uuid *string `json:"uuid,omitempty" tfsdk:"uuid"`
 }
@@ -160,11 +221,19 @@ type NestedPartition struct {
 type NestedPlanComponent struct {
 	Amount *int64 `json:"amount,omitempty" tfsdk:"amount"`
 
-	DiscountRate *int64 `json:"discount_rate,omitempty" tfsdk:"discount_rate"`
+	BillingType *string `json:"billing_type,omitempty" tfsdk:"billing_type"`
 
-	DiscountThreshold *int64 `json:"discount_threshold,omitempty" tfsdk:"discount_threshold"`
+	DiscountAggregation *string `json:"discount_aggregation,omitempty" tfsdk:"discount_aggregation"`
+
+	DiscountDescription *string `json:"discount_description,omitempty" tfsdk:"discount_description"`
+
+	DiscountFormula *string `json:"discount_formula,omitempty" tfsdk:"discount_formula"`
 
 	FuturePrice *string `json:"future_price,omitempty" tfsdk:"future_price"`
+
+	IsPrepaid *bool `json:"is_prepaid,omitempty" tfsdk:"is_prepaid"`
+
+	LimitPeriod *string `json:"limit_period,omitempty" tfsdk:"limit_period"`
 
 	MeasuredUnit *string `json:"measured_unit,omitempty" tfsdk:"measured_unit"`
 
@@ -175,10 +244,34 @@ type NestedPlanComponent struct {
 	Type *string `json:"type,omitempty" tfsdk:"type"`
 }
 
-type NestedRole struct {
+type NestedQoS struct {
+	DefaultTime *int64 `json:"default_time,omitempty" tfsdk:"default_time"`
+
+	Description *string `json:"description,omitempty" tfsdk:"description"`
+
+	Flags *string `json:"flags,omitempty" tfsdk:"flags"`
+
+	GraceTime *int64 `json:"grace_time,omitempty" tfsdk:"grace_time"`
+
+	GrpTres *string `json:"grp_tres,omitempty" tfsdk:"grp_tres"`
+
+	MaxNodes *int64 `json:"max_nodes,omitempty" tfsdk:"max_nodes"`
+
+	MaxTime *int64 `json:"max_time,omitempty" tfsdk:"max_time"`
+
+	MaxTresPerJob *string `json:"max_tres_per_job,omitempty" tfsdk:"max_tres_per_job"`
+
+	MaxTresPerNode *string `json:"max_tres_per_node,omitempty" tfsdk:"max_tres_per_node"`
+
+	MaxTresPerUser *string `json:"max_tres_per_user,omitempty" tfsdk:"max_tres_per_user"`
+
+	MinNodes *int64 `json:"min_nodes,omitempty" tfsdk:"min_nodes"`
+
+	MinTresPerJob *string `json:"min_tres_per_job,omitempty" tfsdk:"min_tres_per_job"`
+
 	Name *string `json:"name,omitempty" tfsdk:"name"`
 
-	Url *string `json:"url,omitempty" tfsdk:"url"`
+	Priority *int64 `json:"priority,omitempty" tfsdk:"priority"`
 
 	Uuid *string `json:"uuid,omitempty" tfsdk:"uuid"`
 }
@@ -220,6 +313,10 @@ type NestedSecurityGroupRule struct {
 type NestedSoftwareCatalog struct {
 	Catalog *NestedSoftwareCatalogCatalog `json:"catalog,omitempty" tfsdk:"catalog"`
 
+	EnabledCpuFamily *[]string `json:"enabled_cpu_family,omitempty" tfsdk:"enabled_cpu_family"`
+
+	EnabledCpuMicroarchitectures *[]string `json:"enabled_cpu_microarchitectures,omitempty" tfsdk:"enabled_cpu_microarchitectures"`
+
 	PackageCount *int64 `json:"package_count,omitempty" tfsdk:"package_count"`
 
 	Partition *NestedSoftwareCatalogPartition `json:"partition,omitempty" tfsdk:"partition"`
@@ -231,11 +328,17 @@ type NestedSoftwareCatalogCatalog struct {
 
 	Name *string `json:"name,omitempty" tfsdk:"name"`
 
+	SupportsCpuTargetRestrictions *bool `json:"supports_cpu_target_restrictions,omitempty" tfsdk:"supports_cpu_target_restrictions"`
+
 	Uuid *string `json:"uuid,omitempty" tfsdk:"uuid"`
 
 	Version *string `json:"version,omitempty" tfsdk:"version"`
 }
 type NestedSoftwareCatalogPartition struct {
+	CpuArch *string `json:"cpu_arch,omitempty" tfsdk:"cpu_arch"`
+
+	GpuArch *string `json:"gpu_arch,omitempty" tfsdk:"gpu_arch"`
+
 	PartitionName *string `json:"partition_name,omitempty" tfsdk:"partition_name"`
 
 	PriorityTier *int64 `json:"priority_tier,omitempty" tfsdk:"priority_tier"`
@@ -254,11 +357,19 @@ type NestedTag struct {
 type NetworkRBACPolicy struct {
 	BackendId *string `json:"backend_id,omitempty" tfsdk:"backend_id"`
 
+	Direction *string `json:"direction,omitempty" tfsdk:"direction"`
+
 	Network *string `json:"network,omitempty" tfsdk:"network"`
 
 	NetworkName *string `json:"network_name,omitempty" tfsdk:"network_name"`
 
 	PolicyType *string `json:"policy_type,omitempty" tfsdk:"policy_type"`
+
+	SourceTenantName *string `json:"source_tenant_name,omitempty" tfsdk:"source_tenant_name"`
+
+	SourceTenantUuid *string `json:"source_tenant_uuid,omitempty" tfsdk:"source_tenant_uuid"`
+
+	TargetLabel *string `json:"target_label,omitempty" tfsdk:"target_label"`
 
 	TargetTenant *string `json:"target_tenant,omitempty" tfsdk:"target_tenant"`
 
@@ -274,7 +385,7 @@ type OfferingComponent struct {
 
 	BillingType *string `json:"billing_type,omitempty" tfsdk:"billing_type"`
 
-	DefaultLimit *int64 `json:"default_limit,omitempty" tfsdk:"default_limit"`
+	DefaultLimit FlexibleNumber `json:"default_limit,omitempty" tfsdk:"default_limit"`
 
 	Description *string `json:"description,omitempty" tfsdk:"description"`
 
@@ -286,25 +397,37 @@ type OfferingComponent struct {
 
 	IsPrepaid *bool `json:"is_prepaid,omitempty" tfsdk:"is_prepaid"`
 
-	LimitAmount *int64 `json:"limit_amount,omitempty" tfsdk:"limit_amount"`
+	LimitAmount FlexibleNumber `json:"limit_amount,omitempty" tfsdk:"limit_amount"`
+
+	LimitDecimalPlaces *int64 `json:"limit_decimal_places,omitempty" tfsdk:"limit_decimal_places"`
 
 	LimitPeriod *string `json:"limit_period,omitempty" tfsdk:"limit_period"`
 
-	MaxAvailableLimit *int64 `json:"max_available_limit,omitempty" tfsdk:"max_available_limit"`
+	MaxAvailableLimit FlexibleNumber `json:"max_available_limit,omitempty" tfsdk:"max_available_limit"`
 
 	MaxPrepaidDuration *int64 `json:"max_prepaid_duration,omitempty" tfsdk:"max_prepaid_duration"`
 
-	MaxValue *int64 `json:"max_value,omitempty" tfsdk:"max_value"`
+	MaxRenewalDuration *int64 `json:"max_renewal_duration,omitempty" tfsdk:"max_renewal_duration"`
+
+	MaxValue FlexibleNumber `json:"max_value,omitempty" tfsdk:"max_value"`
 
 	MeasuredUnit *string `json:"measured_unit,omitempty" tfsdk:"measured_unit"`
 
 	MinPrepaidDuration *int64 `json:"min_prepaid_duration,omitempty" tfsdk:"min_prepaid_duration"`
 
-	MinValue *int64 `json:"min_value,omitempty" tfsdk:"min_value"`
+	MinRenewalDuration *int64 `json:"min_renewal_duration,omitempty" tfsdk:"min_renewal_duration"`
+
+	MinValue FlexibleNumber `json:"min_value,omitempty" tfsdk:"min_value"`
 
 	Name *string `json:"name,omitempty" tfsdk:"name"`
 
+	OfferingUuid *string `json:"offering_uuid,omitempty" tfsdk:"offering_uuid"`
+
 	OverageComponent *string `json:"overage_component,omitempty" tfsdk:"overage_component"`
+
+	PrepaidDurationStep *int64 `json:"prepaid_duration_step,omitempty" tfsdk:"prepaid_duration_step"`
+
+	RenewalDurationStep *int64 `json:"renewal_duration_step,omitempty" tfsdk:"renewal_duration_step"`
 
 	Type *string `json:"type,omitempty" tfsdk:"type"`
 
@@ -314,6 +437,8 @@ type OfferingComponent struct {
 }
 
 type OpenStackAllowedAddressPair struct {
+	IpAddress *string `json:"ip_address,omitempty" tfsdk:"ip_address"`
+
 	MacAddress *string `json:"mac_address,omitempty" tfsdk:"mac_address"`
 }
 
@@ -359,6 +484,8 @@ type OpenStackCreateInstancePortRequest struct {
 	MacAddress *string `json:"mac_address,omitempty" tfsdk:"mac_address"`
 
 	Port *string `json:"port,omitempty" tfsdk:"port"`
+
+	PortSecurityEnabled *bool `json:"port_security_enabled,omitempty" tfsdk:"port_security_enabled"`
 
 	SecurityGroups *[]OpenStackSecurityGroup `json:"security_groups,omitempty" tfsdk:"security_groups"`
 
@@ -414,7 +541,13 @@ type OpenStackNestedSubNet struct {
 
 	IpVersion *int64 `json:"ip_version,omitempty" tfsdk:"ip_version"`
 
+	Ipv6AddressMode *string `json:"ipv6_address_mode,omitempty" tfsdk:"ipv6_address_mode"`
+
+	Ipv6RaMode *string `json:"ipv6_ra_mode,omitempty" tfsdk:"ipv6_ra_mode"`
+
 	Name *string `json:"name,omitempty" tfsdk:"name"`
+
+	PortSecurityEnabled *bool `json:"port_security_enabled,omitempty" tfsdk:"port_security_enabled"`
 
 	Uuid *string `json:"uuid,omitempty" tfsdk:"uuid"`
 }
@@ -446,9 +579,9 @@ type OpenStackNestedVolume struct {
 }
 
 type OpenStackPortNestedSecurityGroupRequest struct {
-	Name *string `json:"name" tfsdk:"name"`
+	Name *string `json:"name,omitempty" tfsdk:"name"`
 
-	Url *string `json:"url,omitempty" tfsdk:"url"`
+	Url *string `json:"url" tfsdk:"url"`
 
 	Uuid *string `json:"uuid,omitempty" tfsdk:"uuid"`
 }
@@ -461,6 +594,10 @@ type OpenStackSecurityGroup struct {
 	Description *string `json:"description,omitempty" tfsdk:"description"`
 
 	ErrorMessage *string `json:"error_message,omitempty" tfsdk:"error_message"`
+
+	InstanceCount *int64 `json:"instance_count,omitempty" tfsdk:"instance_count"`
+
+	MarketplaceOfferingType *string `json:"marketplace_offering_type,omitempty" tfsdk:"marketplace_offering_type"`
 
 	MarketplaceResourceUuid *string `json:"marketplace_resource_uuid,omitempty" tfsdk:"marketplace_resource_uuid"`
 
@@ -576,6 +713,14 @@ type OrderDetails struct {
 
 	Attachment *string `json:"attachment,omitempty" tfsdk:"attachment"`
 
+	Attributes map[string]interface{} `json:"attributes,omitempty" tfsdk:"attributes"`
+
+	AutoApproved *bool `json:"auto_approved,omitempty" tfsdk:"auto_approved"`
+
+	AutoApprovedByRuleUuid *string `json:"auto_approved_by_rule_uuid,omitempty" tfsdk:"auto_approved_by_rule_uuid"`
+
+	AutoApprovedCostLimitSnapshot *string `json:"auto_approved_cost_limit_snapshot,omitempty" tfsdk:"auto_approved_cost_limit_snapshot"`
+
 	BackendId *string `json:"backend_id,omitempty" tfsdk:"backend_id"`
 
 	CallbackUrl *string `json:"callback_url,omitempty" tfsdk:"callback_url"`
@@ -587,6 +732,14 @@ type OrderDetails struct {
 	CategoryUuid *string `json:"category_uuid,omitempty" tfsdk:"category_uuid"`
 
 	CompletedAt *string `json:"completed_at,omitempty" tfsdk:"completed_at"`
+
+	ConsumerMessage *string `json:"consumer_message,omitempty" tfsdk:"consumer_message"`
+
+	ConsumerMessageAttachment *string `json:"consumer_message_attachment,omitempty" tfsdk:"consumer_message_attachment"`
+
+	ConsumerMessageUpdatedAt *string `json:"consumer_message_updated_at,omitempty" tfsdk:"consumer_message_updated_at"`
+
+	ConsumerRejectionComment *string `json:"consumer_rejection_comment,omitempty" tfsdk:"consumer_rejection_comment"`
 
 	ConsumerReviewedAt *string `json:"consumer_reviewed_at,omitempty" tfsdk:"consumer_reviewed_at"`
 
@@ -600,7 +753,19 @@ type OrderDetails struct {
 
 	CreatedByCivilNumber *string `json:"created_by_civil_number,omitempty" tfsdk:"created_by_civil_number"`
 
+	CreatedByEmail *string `json:"created_by_email,omitempty" tfsdk:"created_by_email"`
+
 	CreatedByFullName *string `json:"created_by_full_name,omitempty" tfsdk:"created_by_full_name"`
+
+	CreatedByOrganization *string `json:"created_by_organization,omitempty" tfsdk:"created_by_organization"`
+
+	CreatedByOrganizationAddress *string `json:"created_by_organization_address,omitempty" tfsdk:"created_by_organization_address"`
+
+	CreatedByOrganizationCountry *string `json:"created_by_organization_country,omitempty" tfsdk:"created_by_organization_country"`
+
+	CreatedByOrganizationRegistryCode *string `json:"created_by_organization_registry_code,omitempty" tfsdk:"created_by_organization_registry_code"`
+
+	CreatedByOrganizationVatCode *string `json:"created_by_organization_vat_code,omitempty" tfsdk:"created_by_organization_vat_code"`
 
 	CreatedByUsername *string `json:"created_by_username,omitempty" tfsdk:"created_by_username"`
 
@@ -608,15 +773,19 @@ type OrderDetails struct {
 
 	ErrorMessage *string `json:"error_message,omitempty" tfsdk:"error_message"`
 
+	ErrorUpdatedAt *string `json:"error_updated_at,omitempty" tfsdk:"error_updated_at"`
+
 	FixedPrice FlexibleNumber `json:"fixed_price,omitempty" tfsdk:"fixed_price"`
 
 	Issue *OrderDetailsIssue `json:"issue,omitempty" tfsdk:"issue"`
 
-	Limits map[string]int64 `json:"limits,omitempty" tfsdk:"limits"`
+	Limits map[string]float64 `json:"limits,omitempty" tfsdk:"limits"`
 
 	MarketplaceResourceUuid *string `json:"marketplace_resource_uuid,omitempty" tfsdk:"marketplace_resource_uuid"`
 
 	NewCostEstimate *string `json:"new_cost_estimate,omitempty" tfsdk:"new_cost_estimate"`
+
+	NewPlanBillingMode *string `json:"new_plan_billing_mode,omitempty" tfsdk:"new_plan_billing_mode"`
 
 	NewPlanName *string `json:"new_plan_name,omitempty" tfsdk:"new_plan_name"`
 
@@ -630,6 +799,8 @@ type OrderDetails struct {
 
 	OfferingImage *string `json:"offering_image,omitempty" tfsdk:"offering_image"`
 
+	OfferingPluginOptions map[string]interface{} `json:"offering_plugin_options,omitempty" tfsdk:"offering_plugin_options"`
+
 	OfferingShared *bool `json:"offering_shared,omitempty" tfsdk:"offering_shared"`
 
 	OfferingThumbnail *string `json:"offering_thumbnail,omitempty" tfsdk:"offering_thumbnail"`
@@ -640,6 +811,8 @@ type OrderDetails struct {
 
 	OldCostEstimate FlexibleNumber `json:"old_cost_estimate,omitempty" tfsdk:"old_cost_estimate"`
 
+	OldPlanBillingMode *string `json:"old_plan_billing_mode,omitempty" tfsdk:"old_plan_billing_mode"`
+
 	OldPlanName *string `json:"old_plan_name,omitempty" tfsdk:"old_plan_name"`
 
 	OldPlanUuid *string `json:"old_plan_uuid,omitempty" tfsdk:"old_plan_uuid"`
@@ -647,6 +820,8 @@ type OrderDetails struct {
 	OrderSubtype *string `json:"order_subtype,omitempty" tfsdk:"order_subtype"`
 
 	Output *string `json:"output,omitempty" tfsdk:"output"`
+
+	OutputUpdatedAt *string `json:"output_updated_at,omitempty" tfsdk:"output_updated_at"`
 
 	Plan *string `json:"plan,omitempty" tfsdk:"plan"`
 
@@ -662,7 +837,19 @@ type OrderDetails struct {
 
 	ProjectSlug *string `json:"project_slug,omitempty" tfsdk:"project_slug"`
 
+	ProviderDescription *string `json:"provider_description,omitempty" tfsdk:"provider_description"`
+
+	ProviderMessage *string `json:"provider_message,omitempty" tfsdk:"provider_message"`
+
+	ProviderMessageAttachment *string `json:"provider_message_attachment,omitempty" tfsdk:"provider_message_attachment"`
+
+	ProviderMessageUpdatedAt *string `json:"provider_message_updated_at,omitempty" tfsdk:"provider_message_updated_at"`
+
+	ProviderMessageUrl *string `json:"provider_message_url,omitempty" tfsdk:"provider_message_url"`
+
 	ProviderName *string `json:"provider_name,omitempty" tfsdk:"provider_name"`
+
+	ProviderRejectionComment *string `json:"provider_rejection_comment,omitempty" tfsdk:"provider_rejection_comment"`
 
 	ProviderReviewedAt *string `json:"provider_reviewed_at,omitempty" tfsdk:"provider_reviewed_at"`
 
@@ -677,6 +864,8 @@ type OrderDetails struct {
 	ProviderUuid *string `json:"provider_uuid,omitempty" tfsdk:"provider_uuid"`
 
 	RequestComment *string `json:"request_comment,omitempty" tfsdk:"request_comment"`
+
+	ResourceEndDate *string `json:"resource_end_date,omitempty" tfsdk:"resource_end_date"`
 
 	ResourceName *string `json:"resource_name,omitempty" tfsdk:"resource_name"`
 
@@ -698,12 +887,16 @@ type OrderDetails struct {
 
 	Uuid *string `json:"uuid,omitempty" tfsdk:"uuid"`
 }
+type OrderDetailsAttributes struct {
+}
 type OrderDetailsIssue struct {
 	Key *string `json:"key,omitempty" tfsdk:"key"`
 
 	Uuid *string `json:"uuid,omitempty" tfsdk:"uuid"`
 }
 type OrderDetailsLimits struct {
+}
+type OrderDetailsOfferingPluginOptions struct {
 }
 
 type OrganizationGroup struct {
@@ -745,9 +938,17 @@ type PaymentProfile struct {
 type PaymentProfileAttributes struct {
 	AgreementNumber *string `json:"agreement_number,omitempty" tfsdk:"agreement_number"`
 
-	ContractSum *int64 `json:"contract_sum,omitempty" tfsdk:"contract_sum"`
+	ContractSum *string `json:"contract_sum,omitempty" tfsdk:"contract_sum"`
 
 	EndDate *string `json:"end_date,omitempty" tfsdk:"end_date"`
+}
+
+type ProjectMetadataAnswer struct {
+	Question *string `json:"question,omitempty" tfsdk:"question"`
+
+	QuestionType *string `json:"question_type,omitempty" tfsdk:"question_type"`
+
+	QuestionUuid *string `json:"question_uuid,omitempty" tfsdk:"question_uuid"`
 }
 
 type Quota struct {

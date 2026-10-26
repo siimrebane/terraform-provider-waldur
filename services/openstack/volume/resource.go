@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
@@ -61,6 +62,13 @@ func (r *OpenstackVolumeResource) Schema(ctx context.Context, req resource.Schem
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"action_details": schema.MapAttribute{
+				ElementType: types.StringType,
+				Computed:    true,
+				PlanModifiers: []planmodifier.Map{
+
+					mapplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Action Details"},
 			"availability_zone": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
@@ -164,6 +172,12 @@ func (r *OpenstackVolumeResource) Schema(ctx context.Context, req resource.Schem
 
 					mapplanmodifier.RequiresReplace(),
 				}, MarkdownDescription: "Resource limits"},
+			"marketplace_offering_type": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Marketplace Offering Type"},
 			"marketplace_resource_uuid": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -295,6 +309,9 @@ func (r *OpenstackVolumeResource) Configure(ctx context.Context, req resource.Co
 // are set to explicit null values instead of remaining "Unknown".
 func (r *OpenstackVolumeResource) resolveUnknownAttributes(data *OpenstackVolumeResourceModel) {
 	// Iterate over all model fields to handle Unknown values
+	if data.ActionDetails.IsUnknown() {
+		data.ActionDetails = types.MapNull(types.StringType)
+	}
 	if data.AvailabilityZone.IsUnknown() {
 		data.AvailabilityZone = types.StringNull()
 	}
@@ -342,6 +359,9 @@ func (r *OpenstackVolumeResource) resolveUnknownAttributes(data *OpenstackVolume
 	}
 	if data.Limits.IsUnknown() {
 		data.Limits = types.MapNull(types.Float64Type)
+	}
+	if data.MarketplaceOfferingType.IsUnknown() {
+		data.MarketplaceOfferingType = types.StringNull()
 	}
 	if data.MarketplaceResourceUuid.IsUnknown() {
 		data.MarketplaceResourceUuid = types.StringNull()
@@ -458,6 +478,7 @@ func (r *OpenstackVolumeResource) Create(ctx context.Context, req resource.Creat
 	// Wait for the order to reach a terminal state (done/erred)
 	finalOrder, err := common.WaitForOrder(ctx, r.client.Client, *orderRes.Uuid, timeout)
 	if err != nil {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		resp.Diagnostics.AddError("Order Failed", err.Error())
 		return
 	}
@@ -466,6 +487,7 @@ func (r *OpenstackVolumeResource) Create(ctx context.Context, req resource.Creat
 	if uuid := common.ResolveResourceUUID(finalOrder); uuid != "" {
 		data.UUID = types.StringValue(uuid)
 	} else {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		resp.Diagnostics.AddError("Resource UUID Missing", "Order completed but resource UUID is missing")
 		return
 	}
@@ -473,16 +495,11 @@ func (r *OpenstackVolumeResource) Create(ctx context.Context, req resource.Creat
 	// Fetch final resource state to ensure Terraform state matches reality
 	apiResp, err := r.client.Get(ctx, data.UUID.ValueString())
 	if err != nil {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		resp.Diagnostics.AddError("Failed to Read Resource", err.Error())
 		return
 	}
 	resp.Diagnostics.Append(data.CopyFrom(ctx, *apiResp)...)
-	// Refresh resource state after any post-create actions so that the
-	// Terraform state reflects fields applied via RPC actions.
-	if refreshedResp, refreshErr := r.client.Get(ctx, data.UUID.ValueString()); refreshErr == nil {
-		apiResp = refreshedResp
-		resp.Diagnostics.Append(data.CopyFrom(ctx, *apiResp)...)
-	}
 
 	// Resolve unknown attributes to explicit null values
 	r.resolveUnknownAttributes(&data)
@@ -710,6 +727,12 @@ func (r *OpenstackVolumeResource) ImportState(ctx context.Context, req resource.
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
+	data.Timeouts = timeouts.Value{
+		Object: types.ObjectNull(map[string]attr.Type{
+			"create": types.StringType,
+			"update": types.StringType,
+			"delete": types.StringType,
+		}),
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

@@ -28,6 +28,7 @@ func NestedSecurityGroupRuleType() types.ObjectType {
 }
 func OpenStackAllowedAddressPairType() types.ObjectType {
 	return types.ObjectType{AttrTypes: map[string]attr.Type{
+		"ip_address":  types.StringType,
 		"mac_address": types.StringType,
 	}}
 }
@@ -50,6 +51,7 @@ func OpenStackCreateInstancePortRequestType() types.ObjectType {
 	return types.ObjectType{AttrTypes: map[string]attr.Type{
 		"fixed_ips":             types.ListType{ElemType: OpenStackFixedIpType()},
 		"port":                  types.StringType,
+		"port_security_enabled": types.BoolType,
 		"subnet":                types.StringType,
 		"allowed_address_pairs": types.ListType{ElemType: OpenStackAllowedAddressPairType()},
 		"device_id":             types.StringType,
@@ -97,6 +99,8 @@ func OpenStackSecurityGroupType() types.ObjectType {
 		"customer":                  types.StringType,
 		"description":               types.StringType,
 		"error_message":             types.StringType,
+		"instance_count":            types.Int64Type,
+		"marketplace_offering_type": types.StringType,
 		"marketplace_resource_uuid": types.StringType,
 		"name":                      types.StringType,
 		"project":                   types.StringType,
@@ -169,11 +173,12 @@ type OpenstackInstanceFiltersModel struct {
 	ProjectUuid          types.String `tfsdk:"project_uuid"`
 	Query                types.String `tfsdk:"query"`
 	RuntimeState         types.String `tfsdk:"runtime_state"`
+	SecurityGroup        types.String `tfsdk:"security_group"`
+	SecurityGroupUuid    types.String `tfsdk:"security_group_uuid"`
 	ServiceSettingsName  types.String `tfsdk:"service_settings_name"`
 	ServiceSettingsUuid  types.String `tfsdk:"service_settings_uuid"`
 	Tenant               types.String `tfsdk:"tenant"`
 	TenantUuid           types.String `tfsdk:"tenant_uuid"`
-	Uuid                 types.String `tfsdk:"uuid"`
 }
 
 func (m *OpenstackInstanceFiltersModel) GetSchema() schema.SingleNestedAttribute {
@@ -253,6 +258,14 @@ func (m *OpenstackInstanceFiltersModel) GetSchema() schema.SingleNestedAttribute
 				Optional:            true,
 				MarkdownDescription: "Runtime state",
 			},
+			"security_group": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Security group URL",
+			},
+			"security_group_uuid": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Security group UUID",
+			},
 			"service_settings_name": schema.StringAttribute{
 				Optional:            true,
 				MarkdownDescription: "Service settings name",
@@ -269,19 +282,17 @@ func (m *OpenstackInstanceFiltersModel) GetSchema() schema.SingleNestedAttribute
 				Optional:            true,
 				MarkdownDescription: "Tenant UUID",
 			},
-			"uuid": schema.StringAttribute{
-				Optional:            true,
-				MarkdownDescription: "UUID",
-			},
 		},
 	}
 }
 
 type OpenstackInstanceModel struct {
 	UUID                             types.String      `tfsdk:"id"`
+	ActionDetails                    types.Map         `tfsdk:"action_details"`
 	AvailabilityZone                 types.String      `tfsdk:"availability_zone"`
 	AvailabilityZoneName             types.String      `tfsdk:"availability_zone_name"`
 	BackendId                        types.String      `tfsdk:"backend_id"`
+	ConfigDrive                      types.Bool        `tfsdk:"config_drive"`
 	ConnectDirectlyToExternalNetwork types.Bool        `tfsdk:"connect_directly_to_external_network"`
 	Cores                            types.Int64       `tfsdk:"cores"`
 	Customer                         types.String      `tfsdk:"customer"`
@@ -298,6 +309,7 @@ type OpenstackInstanceModel struct {
 	InternalIps                      types.List        `tfsdk:"internal_ips"`
 	KeyFingerprint                   types.String      `tfsdk:"key_fingerprint"`
 	KeyName                          types.String      `tfsdk:"key_name"`
+	MarketplaceOfferingType          types.String      `tfsdk:"marketplace_offering_type"`
 	MarketplaceResourceUuid          types.String      `tfsdk:"marketplace_resource_uuid"`
 	MinDisk                          types.Int64       `tfsdk:"min_disk"`
 	MinRam                           types.Int64       `tfsdk:"min_ram"`
@@ -325,11 +337,21 @@ func (model *OpenstackInstanceModel) CopyFrom(ctx context.Context, apiResp Opens
 
 	model.UUID = types.StringPointerValue(apiResp.UUID)
 
+	if apiResp.ActionDetails != nil {
+		valActionDetails, diagsActionDetails := types.MapValueFrom(ctx, types.StringType, apiResp.ActionDetails)
+		diags.Append(diagsActionDetails...)
+		model.ActionDetails = valActionDetails
+	} else {
+		model.ActionDetails = types.MapNull(types.StringType)
+	}
+
 	model.AvailabilityZone = common.StringPointerValue(apiResp.AvailabilityZone)
 
 	model.AvailabilityZoneName = common.StringPointerValue(apiResp.AvailabilityZoneName)
 
 	model.BackendId = common.StringPointerValue(apiResp.BackendId)
+
+	model.ConfigDrive = types.BoolPointerValue(apiResp.ConfigDrive)
 
 	model.ConnectDirectlyToExternalNetwork = types.BoolPointerValue(apiResp.ConnectDirectlyToExternalNetwork)
 
@@ -386,6 +408,8 @@ func (model *OpenstackInstanceModel) CopyFrom(ctx context.Context, apiResp Opens
 	model.KeyFingerprint = common.StringPointerValue(apiResp.KeyFingerprint)
 
 	model.KeyName = common.StringPointerValue(apiResp.KeyName)
+
+	model.MarketplaceOfferingType = common.StringPointerValue(apiResp.MarketplaceOfferingType)
 
 	model.MarketplaceResourceUuid = common.StringPointerValue(apiResp.MarketplaceResourceUuid)
 

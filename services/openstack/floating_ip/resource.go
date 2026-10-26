@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
@@ -106,6 +107,12 @@ func (r *OpenstackFloatingIpResource) Schema(ctx context.Context, req resource.S
 
 					stringplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Instance Uuid"},
+			"marketplace_offering_type": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Marketplace Offering Type"},
 			"marketplace_resource_uuid": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -263,41 +270,11 @@ func (r *OpenstackFloatingIpResource) Create(ctx context.Context, req resource.C
 		return r.client.Get(ctx, data.UUID.ValueString())
 	}, createTimeout)
 	if err != nil {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		resp.Diagnostics.AddError("Failed to wait for resource creation", err.Error())
 		return
 	}
 	apiResp = newResp
-	if !data.Description.IsNull() && !data.Description.IsUnknown() {
-		// Post-create: apply action-backed field set in plan via RPC action.
-		var postCreateReqUpdateDescription OpenstackFloatingIpUpdateDescriptionActionRequest
-		postCreateReqUpdateDescription.Description = data.Description.ValueStringPointer()
-
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		if actionErr := r.client.UpdateDescription(ctx, data.UUID.ValueString(), &postCreateReqUpdateDescription); actionErr != nil {
-			resp.Diagnostics.AddError(
-				"RPC Action Failed on Create: update_description",
-				"An error occurred while applying update_description after create: "+actionErr.Error(),
-			)
-			return
-		}
-		if _, waitErr := common.WaitForResource(ctx, func(ctx context.Context) (*OpenstackFloatingIpResponse, error) {
-			return r.client.Get(ctx, data.UUID.ValueString())
-		}, createTimeout); waitErr != nil {
-			resp.Diagnostics.AddError(
-				"Wait for post-create action failed: update_description",
-				waitErr.Error(),
-			)
-			return
-		}
-	}
-	// Refresh resource state after any post-create actions so that the
-	// Terraform state reflects fields applied via RPC actions.
-	if refreshedResp, refreshErr := r.client.Get(ctx, data.UUID.ValueString()); refreshErr == nil {
-		apiResp = refreshedResp
-	}
 
 	resp.Diagnostics.Append(data.CopyFrom(ctx, *apiResp)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -454,6 +431,12 @@ func (r *OpenstackFloatingIpResource) ImportState(ctx context.Context, req resou
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
+	data.Timeouts = timeouts.Value{
+		Object: types.ObjectNull(map[string]attr.Type{
+			"create": types.StringType,
+			"update": types.StringType,
+			"delete": types.StringType,
+		}),
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

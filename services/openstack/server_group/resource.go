@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
@@ -68,6 +69,7 @@ func (r *OpenstackServerGroupResource) Schema(ctx context.Context, req resource.
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 
+					stringplanmodifier.RequiresReplace(),
 					stringplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Description"},
 			"display_name": schema.StringAttribute{
@@ -113,6 +115,12 @@ func (r *OpenstackServerGroupResource) Schema(ctx context.Context, req resource.
 					listplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Instances",
 			},
+			"marketplace_offering_type": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Marketplace Offering Type"},
 			"marketplace_resource_uuid": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -120,14 +128,19 @@ func (r *OpenstackServerGroupResource) Schema(ctx context.Context, req resource.
 					stringplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Marketplace Resource Uuid"},
 			"name": schema.StringAttribute{
-				Required: true, MarkdownDescription: "Name"},
+				Required: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.RequiresReplace(),
+				}, MarkdownDescription: "Name"},
 			"policy": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 
+					stringplanmodifier.RequiresReplace(),
 					stringplanmodifier.UseStateForUnknown(),
-				}, MarkdownDescription: "Server group policy determining the rules for scheduling servers in this group"},
+				}, MarkdownDescription: "affinity — all instances are placed on the same hypervisor. anti-affinity — all instances are placed on different hypervisors. soft-affinity — instances are placed on the same hypervisor if possible, but not enforced. soft-anti-affinity — instances are placed on different hypervisors if possible, but not enforced."},
 			"project": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -236,6 +249,7 @@ func (r *OpenstackServerGroupResource) Create(ctx context.Context, req resource.
 		return r.client.Get(ctx, data.UUID.ValueString())
 	}, createTimeout)
 	if err != nil {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		resp.Diagnostics.AddError("Failed to wait for resource creation", err.Error())
 		return
 	}
@@ -279,73 +293,7 @@ func (r *OpenstackServerGroupResource) Read(ctx context.Context, req resource.Re
 
 func (r *OpenstackServerGroupResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 
-	var data OpenstackServerGroupResourceModel
-	var state OpenstackServerGroupResourceModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	var apiResp *OpenstackServerGroupResponse
-	updateTimeout, diags := data.Timeouts.Update(ctx, common.DefaultUpdateTimeout)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	_ = updateTimeout
-	anyChanges := false
-	requestBody := OpenstackServerGroupUpdateRequest{}
-	if !data.Description.IsNull() && !data.Description.IsUnknown() && !data.Description.Equal(state.Description) {
-		anyChanges = true
-
-		requestBody.Description = data.Description.ValueStringPointer()
-	}
-	if !data.Name.IsNull() && !data.Name.IsUnknown() && !data.Name.Equal(state.Name) {
-		anyChanges = true
-
-		requestBody.Name = data.Name.ValueStringPointer()
-	}
-	if !data.Policy.IsNull() && !data.Policy.IsUnknown() && !data.Policy.Equal(state.Policy) {
-		anyChanges = true
-
-		requestBody.Policy = data.Policy.ValueStringPointer()
-	}
-
-	if anyChanges {
-		var err error
-		apiResp, err = r.client.Update(ctx, data.UUID.ValueString(), &requestBody)
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Unable to Update Openstack Server Group",
-				"An error occurred while updating the Openstack Server Group: "+err.Error(),
-			)
-			return
-		}
-		// Wait for the resource to return to OK state
-		newResp, err := common.WaitForResource(ctx, func(ctx context.Context) (*OpenstackServerGroupResponse, error) {
-			return r.client.Get(ctx, data.UUID.ValueString())
-		}, updateTimeout)
-		if err != nil {
-			resp.Diagnostics.AddError("Wait for update failed", err.Error())
-			return
-		}
-		apiResp = newResp
-	}
-
-	newResp, err := r.client.Get(ctx, data.UUID.ValueString())
-	if err != nil {
-		if IsNotFoundError(err) {
-			resp.State.RemoveResource(ctx)
-			return
-		}
-		resp.Diagnostics.AddError("Failed to Read Resource After Update", err.Error())
-		return
-	}
-	apiResp = newResp
-
-	resp.Diagnostics.Append(data.CopyFrom(ctx, *apiResp)...)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.AddError("Update Not Supported", "This resource cannot be updated via the API.")
 }
 
 func (r *OpenstackServerGroupResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -414,6 +362,12 @@ func (r *OpenstackServerGroupResource) ImportState(ctx context.Context, req reso
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
+	data.Timeouts = timeouts.Value{
+		Object: types.ObjectNull(map[string]attr.Type{
+			"create": types.StringType,
+			"update": types.StringType,
+			"delete": types.StringType,
+		}),
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

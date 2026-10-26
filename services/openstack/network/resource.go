@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
@@ -86,6 +87,12 @@ func (r *OpenstackNetworkResource) Schema(ctx context.Context, req resource.Sche
 
 					boolplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Defines whether this network is external (public) or internal (private)"},
+			"marketplace_offering_type": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Marketplace Offering Type"},
 			"marketplace_resource_uuid": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -100,6 +107,12 @@ func (r *OpenstackNetworkResource) Schema(ctx context.Context, req resource.Sche
 				}, MarkdownDescription: "The maximum transmission unit (MTU) value to address fragmentation."},
 			"name": schema.StringAttribute{
 				Required: true, MarkdownDescription: "Name"},
+			"port_security_enabled": schema.BoolAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.Bool{
+
+					boolplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Default port_security_enabled for ports on this network. When False, ports created on this network inherit disabled port security unless explicitly overridden."},
 			"project": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -115,6 +128,12 @@ func (r *OpenstackNetworkResource) Schema(ctx context.Context, req resource.Sche
 
 								stringplanmodifier.UseStateForUnknown(),
 							}, MarkdownDescription: "Backend Id"},
+						"direction": schema.StringAttribute{
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Direction"},
 						"network": schema.StringAttribute{
 							Optional: true,
 							Computed: true,
@@ -135,6 +154,24 @@ func (r *OpenstackNetworkResource) Schema(ctx context.Context, req resource.Sche
 
 								stringplanmodifier.UseStateForUnknown(),
 							}, MarkdownDescription: "Type of access granted - either shared access or external network access"},
+						"source_tenant_name": schema.StringAttribute{
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Source Tenant Name"},
+						"source_tenant_uuid": schema.StringAttribute{
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Source Tenant Uuid"},
+						"target_label": schema.StringAttribute{
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Target Label"},
 						"target_tenant": schema.StringAttribute{
 							Optional: true,
 							Computed: true,
@@ -220,7 +257,7 @@ func (r *OpenstackNetworkResource) Schema(ctx context.Context, req resource.Sche
 							PlanModifiers: []planmodifier.String{
 
 								stringplanmodifier.UseStateForUnknown(),
-							}, MarkdownDescription: "IPv4 network address in CIDR format (e.g. 192.168.0.0/24)"},
+							}, MarkdownDescription: "Network address in CIDR format (e.g. 192.168.0.0/24 or 2001:db8::/64)"},
 						"description": schema.StringAttribute{
 							Optional: true,
 							Computed: true,
@@ -253,6 +290,18 @@ func (r *OpenstackNetworkResource) Schema(ctx context.Context, req resource.Sche
 								int64validator.AtLeast(-32768),
 								int64validator.AtMost(32767),
 							}},
+						"ipv6_address_mode": schema.StringAttribute{
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Ipv6 Address Mode"},
+						"ipv6_ra_mode": schema.StringAttribute{
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Ipv6 Ra Mode"},
 						"name": schema.StringAttribute{
 							Optional: true,
 							Computed: true,
@@ -260,6 +309,12 @@ func (r *OpenstackNetworkResource) Schema(ctx context.Context, req resource.Sche
 
 								stringplanmodifier.UseStateForUnknown(),
 							}, MarkdownDescription: "Name"},
+						"port_security_enabled": schema.BoolAttribute{
+							Computed: true,
+							PlanModifiers: []planmodifier.Bool{
+
+								boolplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Port Security Enabled"},
 						"uuid": schema.StringAttribute{
 							Computed: true,
 							PlanModifiers: []planmodifier.String{
@@ -280,6 +335,12 @@ func (r *OpenstackNetworkResource) Schema(ctx context.Context, req resource.Sche
 
 					stringplanmodifier.RequiresReplace(),
 				}, MarkdownDescription: "OpenStack tenant this network belongs to"},
+			"tenant_is_managed": schema.BoolAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.Bool{
+
+					boolplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "False when the network belongs to an OpenStack project that Waldur does not manage and only reaches tenants through an RBAC share."},
 			"tenant_name": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -366,41 +427,11 @@ func (r *OpenstackNetworkResource) Create(ctx context.Context, req resource.Crea
 		return r.client.Get(ctx, data.UUID.ValueString())
 	}, createTimeout)
 	if err != nil {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		resp.Diagnostics.AddError("Failed to wait for resource creation", err.Error())
 		return
 	}
 	apiResp = newResp
-	if !data.Mtu.IsNull() && !data.Mtu.IsUnknown() {
-		// Post-create: apply action-backed field set in plan via RPC action.
-		var postCreateReqSetMtu OpenstackNetworkSetMtuActionRequest
-		postCreateReqSetMtu.Mtu = data.Mtu.ValueInt64Pointer()
-
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		if actionErr := r.client.SetMtu(ctx, data.UUID.ValueString(), &postCreateReqSetMtu); actionErr != nil {
-			resp.Diagnostics.AddError(
-				"RPC Action Failed on Create: set_mtu",
-				"An error occurred while applying set_mtu after create: "+actionErr.Error(),
-			)
-			return
-		}
-		if _, waitErr := common.WaitForResource(ctx, func(ctx context.Context) (*OpenstackNetworkResponse, error) {
-			return r.client.Get(ctx, data.UUID.ValueString())
-		}, createTimeout); waitErr != nil {
-			resp.Diagnostics.AddError(
-				"Wait for post-create action failed: set_mtu",
-				waitErr.Error(),
-			)
-			return
-		}
-	}
-	// Refresh resource state after any post-create actions so that the
-	// Terraform state reflects fields applied via RPC actions.
-	if refreshedResp, refreshErr := r.client.Get(ctx, data.UUID.ValueString()); refreshErr == nil {
-		apiResp = refreshedResp
-	}
 
 	resp.Diagnostics.Append(data.CopyFrom(ctx, *apiResp)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -590,6 +621,12 @@ func (r *OpenstackNetworkResource) ImportState(ctx context.Context, req resource
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
+	data.Timeouts = timeouts.Value{
+		Object: types.ObjectNull(map[string]attr.Type{
+			"create": types.StringType,
+			"update": types.StringType,
+			"delete": types.StringType,
+		}),
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

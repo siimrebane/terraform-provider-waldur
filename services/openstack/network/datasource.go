@@ -53,12 +53,16 @@ func (d *OpenstackNetworkDataSource) Schema(ctx context.Context, req datasource.
 				Computed: true, MarkdownDescription: "Error Message"},
 			"is_external": schema.BoolAttribute{
 				Computed: true, MarkdownDescription: "Defines whether this network is external (public) or internal (private)"},
+			"marketplace_offering_type": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Marketplace Offering Type"},
 			"marketplace_resource_uuid": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Marketplace Resource Uuid"},
 			"mtu": schema.Int64Attribute{
 				Computed: true, MarkdownDescription: "The maximum transmission unit (MTU) value to address fragmentation."},
 			"name": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Name"},
+			"port_security_enabled": schema.BoolAttribute{
+				Computed: true, MarkdownDescription: "Default port_security_enabled for ports on this network. When False, ports created on this network inherit disabled port security unless explicitly overridden."},
 			"project": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Project"},
 			"rbac_policies": schema.ListNestedAttribute{
@@ -66,12 +70,20 @@ func (d *OpenstackNetworkDataSource) Schema(ctx context.Context, req datasource.
 					Attributes: map[string]schema.Attribute{
 						"backend_id": schema.StringAttribute{
 							Computed: true, MarkdownDescription: "Backend Id"},
+						"direction": schema.StringAttribute{
+							Computed: true, MarkdownDescription: "Direction"},
 						"network": schema.StringAttribute{
 							Computed: true, MarkdownDescription: "Network"},
 						"network_name": schema.StringAttribute{
 							Computed: true, MarkdownDescription: "Network Name"},
 						"policy_type": schema.StringAttribute{
 							Computed: true, MarkdownDescription: "Type of access granted - either shared access or external network access"},
+						"source_tenant_name": schema.StringAttribute{
+							Computed: true, MarkdownDescription: "Source Tenant Name"},
+						"source_tenant_uuid": schema.StringAttribute{
+							Computed: true, MarkdownDescription: "Source Tenant Uuid"},
+						"target_label": schema.StringAttribute{
+							Computed: true, MarkdownDescription: "Target Label"},
 						"target_tenant": schema.StringAttribute{
 							Computed: true, MarkdownDescription: "Target Tenant"},
 						"target_tenant_name": schema.StringAttribute{
@@ -105,7 +117,7 @@ func (d *OpenstackNetworkDataSource) Schema(ctx context.Context, req datasource.
 							Computed: true, MarkdownDescription: "Allocation Pools",
 						},
 						"cidr": schema.StringAttribute{
-							Computed: true, MarkdownDescription: "IPv4 network address in CIDR format (e.g. 192.168.0.0/24)"},
+							Computed: true, MarkdownDescription: "Network address in CIDR format (e.g. 192.168.0.0/24 or 2001:db8::/64)"},
 						"description": schema.StringAttribute{
 							Computed: true, MarkdownDescription: "Description"},
 						"enable_dhcp": schema.BoolAttribute{
@@ -118,8 +130,14 @@ func (d *OpenstackNetworkDataSource) Schema(ctx context.Context, req datasource.
 								int64validator.AtLeast(-32768),
 								int64validator.AtMost(32767),
 							}},
+						"ipv6_address_mode": schema.StringAttribute{
+							Computed: true, MarkdownDescription: "Ipv6 Address Mode"},
+						"ipv6_ra_mode": schema.StringAttribute{
+							Computed: true, MarkdownDescription: "Ipv6 Ra Mode"},
 						"name": schema.StringAttribute{
 							Computed: true, MarkdownDescription: "Name"},
+						"port_security_enabled": schema.BoolAttribute{
+							Computed: true, MarkdownDescription: "Port Security Enabled"},
 						"uuid": schema.StringAttribute{
 							Computed: true, MarkdownDescription: "Uuid"},
 					},
@@ -128,6 +146,8 @@ func (d *OpenstackNetworkDataSource) Schema(ctx context.Context, req datasource.
 			},
 			"tenant": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "OpenStack tenant this network belongs to"},
+			"tenant_is_managed": schema.BoolAttribute{
+				Computed: true, MarkdownDescription: "False when the network belongs to an OpenStack project that Waldur does not manage and only reaches tenants through an RBAC share."},
 			"tenant_name": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Tenant Name"},
 			"tenant_uuid": schema.StringAttribute{

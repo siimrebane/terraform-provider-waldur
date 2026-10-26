@@ -1,5 +1,9 @@
 package volume
 
+import (
+	"github.com/waldur/terraform-provider-waldur/internal/sdk/common"
+)
+
 type OpenstackVolumeCreateRequest struct {
 	EndDate    *string                         `json:"end_date,omitempty"`
 	Limits     map[string]float64              `json:"limits,omitempty"`
@@ -43,7 +47,7 @@ type OpenstackVolumeUpdateRequest struct {
 }
 
 type OpenstackVolumeExtendActionRequest struct {
-	Size *int64 `json:"size,omitempty"`
+	Size *int64 `json:"disk_size,omitempty"`
 }
 
 type OpenstackVolumeRetypeActionRequest struct {
@@ -52,6 +56,8 @@ type OpenstackVolumeRetypeActionRequest struct {
 
 type OpenstackVolumeResponse struct {
 	UUID *string `json:"uuid"`
+
+	ActionDetails common.JSONStringMap `json:"action_details,omitempty" tfsdk:"action_details"`
 
 	AvailabilityZone *string `json:"availability_zone,omitempty" tfsdk:"availability_zone"`
 
@@ -81,6 +87,8 @@ type OpenstackVolumeResponse struct {
 
 	InstanceMarketplaceUuid *string `json:"instance_marketplace_uuid,omitempty" tfsdk:"instance_marketplace_uuid"`
 
+	MarketplaceOfferingType *string `json:"marketplace_offering_type,omitempty" tfsdk:"marketplace_offering_type"`
+
 	MarketplaceResourceUuid *string `json:"marketplace_resource_uuid,omitempty" tfsdk:"marketplace_resource_uuid"`
 
 	Name *string `json:"name" tfsdk:"name"`
@@ -106,6 +114,9 @@ type OpenstackVolumeResponse struct {
 	TypeName *string `json:"type_name,omitempty" tfsdk:"type_name"`
 
 	Url *string `json:"url,omitempty" tfsdk:"url"`
+}
+
+type OpenstackVolumeActionDetailsResponse struct {
 }
 
 func (r *OpenstackVolumeResponse) GetState() string {

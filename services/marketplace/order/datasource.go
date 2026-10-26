@@ -50,6 +50,18 @@ func (d *MarketplaceOrderDataSource) Schema(ctx context.Context, req datasource.
 				Computed: true, MarkdownDescription: "Activation Price"},
 			"attachment": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Attachment"},
+			"attributes": schema.MapAttribute{
+				ElementType: types.StringType,
+				Computed:    true, MarkdownDescription: "Attributes structure depends on the offering type specified in the parent object. Can also be a generic object for offerings without a specific attributes schema."},
+			"auto_approved": schema.BoolAttribute{
+				Computed: true, MarkdownDescription: "Auto Approved"},
+			"auto_approved_by_rule_uuid": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Auto Approved By Rule Uuid"},
+			"auto_approved_cost_limit_snapshot": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Auto Approved Cost Limit Snapshot",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^-?\d{0,12}(?:\.\d{0,10})?$`), ""),
+				}},
 			"backend_id": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Backend Id"},
 			"callback_url": schema.StringAttribute{
@@ -63,6 +75,15 @@ func (d *MarketplaceOrderDataSource) Schema(ctx context.Context, req datasource.
 			"completed_at": schema.StringAttribute{
 				CustomType: timetypes.RFC3339Type{},
 				Computed:   true, MarkdownDescription: "Completed At"},
+			"consumer_message": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Consumer Message"},
+			"consumer_message_attachment": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Consumer Message Attachment"},
+			"consumer_message_updated_at": schema.StringAttribute{
+				CustomType: timetypes.RFC3339Type{},
+				Computed:   true, MarkdownDescription: "Consumer Message Updated At"},
+			"consumer_rejection_comment": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Consumer Rejection Comment"},
 			"consumer_reviewed_at": schema.StringAttribute{
 				CustomType: timetypes.RFC3339Type{},
 				Computed:   true, MarkdownDescription: "Consumer Reviewed At"},
@@ -79,14 +100,29 @@ func (d *MarketplaceOrderDataSource) Schema(ctx context.Context, req datasource.
 				}},
 			"created_by_civil_number": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Created By Civil Number"},
+			"created_by_email": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Created By Email"},
 			"created_by_full_name": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Created By Full Name"},
+			"created_by_organization": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Created By Organization"},
+			"created_by_organization_address": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Postal address of the user's organization"},
+			"created_by_organization_country": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Created By Organization Country"},
+			"created_by_organization_registry_code": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Company registration code of the user's organization, if known"},
+			"created_by_organization_vat_code": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "VAT code of the user's organization"},
 			"created_by_username": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Required. 128 characters or fewer. Lowercase letters, numbers and @/./+/-/_ characters"},
 			"customer_slug": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Customer Slug"},
 			"error_message": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Error Message"},
+			"error_updated_at": schema.StringAttribute{
+				CustomType: timetypes.RFC3339Type{},
+				Computed:   true, MarkdownDescription: "Error Updated At"},
 			"fixed_price": schema.Float64Attribute{
 				Computed: true, MarkdownDescription: "Fixed Price"},
 			"issue": schema.SingleNestedAttribute{
@@ -99,7 +135,7 @@ func (d *MarketplaceOrderDataSource) Schema(ctx context.Context, req datasource.
 				Computed: true, MarkdownDescription: "Issue",
 			},
 			"limits": schema.MapAttribute{
-				ElementType: types.Int64Type,
+				ElementType: types.Float64Type,
 				Computed:    true, MarkdownDescription: "Limits"},
 			"marketplace_resource_uuid": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Marketplace Resource Uuid"},
@@ -108,6 +144,8 @@ func (d *MarketplaceOrderDataSource) Schema(ctx context.Context, req datasource.
 				Validators: []validator.String{
 					stringvalidator.RegexMatches(regexp.MustCompile(`^-?\d{0,12}(?:\.\d{0,10})?$`), ""),
 				}},
+			"new_plan_billing_mode": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "New Plan Billing Mode"},
 			"new_plan_name": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "New Plan Name"},
 			"new_plan_uuid": schema.StringAttribute{
@@ -120,6 +158,9 @@ func (d *MarketplaceOrderDataSource) Schema(ctx context.Context, req datasource.
 				Computed: true, MarkdownDescription: "Offering Description"},
 			"offering_image": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Offering Image"},
+			"offering_plugin_options": schema.MapAttribute{
+				ElementType: types.StringType,
+				Computed:    true, MarkdownDescription: "Public data used by specific plugin, such as storage mode for OpenStack."},
 			"offering_shared": schema.BoolAttribute{
 				Computed: true, MarkdownDescription: "Accessible to all customers."},
 			"offering_thumbnail": schema.StringAttribute{
@@ -129,7 +170,9 @@ func (d *MarketplaceOrderDataSource) Schema(ctx context.Context, req datasource.
 			"offering_uuid": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Offering Uuid"},
 			"old_cost_estimate": schema.Float64Attribute{
-				Computed: true, MarkdownDescription: "Old Cost Estimate"},
+				Computed: true, MarkdownDescription: "The old-limits estimate, snapshotted by init_cost() at creation. Must not recompute live: _compute_old_cost_estimate() prices from \\\"today\\\", which keeps advancing on every read while `cost` stays fixed from creation -- the shown cost change would grow the longer an order sits unread. Orders that predate this field have no snapshot, so they fall back to the live computation rather than a wrong zero."},
+			"old_plan_billing_mode": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Old Plan Billing Mode"},
 			"old_plan_name": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Old Plan Name"},
 			"old_plan_uuid": schema.StringAttribute{
@@ -138,6 +181,9 @@ func (d *MarketplaceOrderDataSource) Schema(ctx context.Context, req datasource.
 				Computed: true, MarkdownDescription: "Order Subtype"},
 			"output": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Output"},
+			"output_updated_at": schema.StringAttribute{
+				CustomType: timetypes.RFC3339Type{},
+				Computed:   true, MarkdownDescription: "Output Updated At"},
 			"plan": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Plan"},
 			"plan_description": schema.StringAttribute{
@@ -152,8 +198,21 @@ func (d *MarketplaceOrderDataSource) Schema(ctx context.Context, req datasource.
 				Computed: true, MarkdownDescription: "Project Description"},
 			"project_slug": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Project Slug"},
+			"provider_description": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Provider Description"},
+			"provider_message": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Provider Message"},
+			"provider_message_attachment": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Provider Message Attachment"},
+			"provider_message_updated_at": schema.StringAttribute{
+				CustomType: timetypes.RFC3339Type{},
+				Computed:   true, MarkdownDescription: "Provider Message Updated At"},
+			"provider_message_url": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Provider Message Url"},
 			"provider_name": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Provider Name"},
+			"provider_rejection_comment": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Provider Rejection Comment"},
 			"provider_reviewed_at": schema.StringAttribute{
 				CustomType: timetypes.RFC3339Type{},
 				Computed:   true, MarkdownDescription: "Provider Reviewed At"},
@@ -169,6 +228,8 @@ func (d *MarketplaceOrderDataSource) Schema(ctx context.Context, req datasource.
 				Computed: true, MarkdownDescription: "Provider Uuid"},
 			"request_comment": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Request Comment"},
+			"resource_end_date": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Resource End Date"},
 			"resource_name": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Resource Name"},
 			"resource_type": schema.StringAttribute{
@@ -176,7 +237,7 @@ func (d *MarketplaceOrderDataSource) Schema(ctx context.Context, req datasource.
 			"resource_uuid": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Resource Uuid"},
 			"slug": schema.StringAttribute{
-				Computed: true, MarkdownDescription: "URL-friendly identifier. Only editable by staff users.",
+				Computed: true, MarkdownDescription: "Slug of the new resource. Used when the caller is staff or holds RESOURCE.SET_SLUG on the project, the offering or their organizations; otherwise ignored.",
 				Validators: []validator.String{
 					stringvalidator.RegexMatches(regexp.MustCompile(`^[-a-zA-Z0-9_]+$`), ""),
 				}},

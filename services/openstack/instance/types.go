@@ -18,6 +18,8 @@ type OpenstackInstanceCreateRequest struct {
 type OpenstackInstanceCreateAttributes struct {
 	AvailabilityZone *string `json:"availability_zone,omitempty"`
 
+	ConfigDrive *bool `json:"config_drive,omitempty"`
+
 	ConnectDirectlyToExternalNetwork *bool `json:"connect_directly_to_external_network,omitempty"`
 
 	DataVolumeSize *int64 `json:"data_volume_size,omitempty"`
@@ -72,64 +74,38 @@ type OpenstackInstanceUpdateRequest struct {
 	Name *string `json:"name,omitempty" tfsdk:"name"`
 }
 
-type OpenstackInstanceChangeFlavorActionRequest struct {
-	Flavor *string `json:"flavor,omitempty"`
-}
-
 type OpenstackInstanceUpdateFloatingIpsActionRequest struct {
-	FloatingIps []common.OpenStackCreateFloatingIPRequest `json:"-"`
-}
-
-// MarshalJSON wraps the list the way the Waldur action expects it:
-// OpenStackInstanceFloatingIPsUpdateSerializer reads {"floating_ips": [...]}.
-func (r OpenstackInstanceUpdateFloatingIpsActionRequest) MarshalJSON() ([]byte, error) {
-	ips := r.FloatingIps
-	if ips == nil {
-		ips = []common.OpenStackCreateFloatingIPRequest{}
-	}
-	return json.Marshal(map[string]interface{}{"floating_ips": ips})
+	FloatingIps []common.OpenStackCreateFloatingIPRequest `json:"floating_ips"`
 }
 
 type OpenstackInstanceUpdatePortsActionRequest struct {
-	Ports []common.OpenStackCreateInstancePortRequest `json:"-"`
-}
-
-// MarshalJSON wraps the list the way the Waldur action expects it:
-// OpenStackInstancePortsUpdateSerializer reads {"ports": [...]}.
-func (r OpenstackInstanceUpdatePortsActionRequest) MarshalJSON() ([]byte, error) {
-	ports := r.Ports
-	if ports == nil {
-		ports = []common.OpenStackCreateInstancePortRequest{}
-	}
-	return json.Marshal(map[string]interface{}{"ports": ports})
+	Ports []common.OpenStackCreateInstancePortRequest `json:"ports"`
 }
 
 type OpenstackInstanceUpdateSecurityGroupsActionRequest struct {
-	SecurityGroups []common.OpenStackSecurityGroupHyperlinkRequest `json:"-"`
+	SecurityGroups []common.OpenStackSecurityGroupHyperlinkRequest `json:"security_groups"`
 }
 
-// MarshalJSON builds the body the Waldur action expects:
-// OpenStackInstanceSecurityGroupsUpdateSerializer reads
-// {"security_groups": ["<url>", ...]}, a list of security-group URLs, not
-// of objects. Elements without a url are skipped.
 func (r OpenstackInstanceUpdateSecurityGroupsActionRequest) MarshalJSON() ([]byte, error) {
-	urls := make([]string, 0, len(r.SecurityGroups))
-	for _, sg := range r.SecurityGroups {
-		if sg.Url != nil && *sg.Url != "" {
-			urls = append(urls, *sg.Url)
-		}
+	urls := make([]*string, len(r.SecurityGroups))
+	for i, item := range r.SecurityGroups {
+		urls[i] = item.Url
 	}
-	return json.Marshal(map[string]interface{}{"security_groups": urls})
+	return json.Marshal(map[string][]*string{"security_groups": urls})
 }
 
 type OpenstackInstanceResponse struct {
 	UUID *string `json:"uuid"`
+
+	ActionDetails common.JSONStringMap `json:"action_details,omitempty" tfsdk:"action_details"`
 
 	AvailabilityZone *string `json:"availability_zone,omitempty" tfsdk:"availability_zone"`
 
 	AvailabilityZoneName *string `json:"availability_zone_name,omitempty" tfsdk:"availability_zone_name"`
 
 	BackendId *string `json:"backend_id,omitempty" tfsdk:"backend_id"`
+
+	ConfigDrive *bool `json:"config_drive,omitempty" tfsdk:"config_drive"`
 
 	ConnectDirectlyToExternalNetwork *bool `json:"connect_directly_to_external_network,omitempty" tfsdk:"connect_directly_to_external_network"`
 
@@ -162,6 +138,8 @@ type OpenstackInstanceResponse struct {
 	KeyFingerprint *string `json:"key_fingerprint,omitempty" tfsdk:"key_fingerprint"`
 
 	KeyName *string `json:"key_name,omitempty" tfsdk:"key_name"`
+
+	MarketplaceOfferingType *string `json:"marketplace_offering_type,omitempty" tfsdk:"marketplace_offering_type"`
 
 	MarketplaceResourceUuid *string `json:"marketplace_resource_uuid,omitempty" tfsdk:"marketplace_resource_uuid"`
 
@@ -202,6 +180,9 @@ type OpenstackInstanceResponse struct {
 	Volumes *[]common.OpenStackNestedVolume `json:"volumes,omitempty" tfsdk:"volumes"`
 }
 
+type OpenstackInstanceActionDetailsResponse struct {
+}
+
 type OpenstackInstanceFloatingIpsResponse struct {
 	IpAddress *string `json:"ip_address,omitempty" tfsdk:"ip_address"`
 
@@ -237,6 +218,8 @@ type OpenstackInstancePortsResponse struct {
 
 	Port *string `json:"port,omitempty" tfsdk:"port"`
 
+	PortSecurityEnabled *bool `json:"port_security_enabled,omitempty" tfsdk:"port_security_enabled"`
+
 	Subnet *string `json:"subnet,omitempty" tfsdk:"subnet"`
 
 	AllowedAddressPairs *[]common.OpenStackAllowedAddressPair `json:"allowed_address_pairs,omitempty" tfsdk:"allowed_address_pairs"`
@@ -267,6 +250,8 @@ type OpenstackInstancePortsFixedIpsResponse struct {
 }
 
 type OpenstackInstancePortsAllowedAddressPairsResponse struct {
+	IpAddress *string `json:"ip_address,omitempty" tfsdk:"ip_address"`
+
 	MacAddress *string `json:"mac_address,omitempty" tfsdk:"mac_address"`
 }
 
@@ -278,6 +263,10 @@ type OpenstackInstancePortsSecurityGroupsResponse struct {
 	Description *string `json:"description,omitempty" tfsdk:"description"`
 
 	ErrorMessage *string `json:"error_message,omitempty" tfsdk:"error_message"`
+
+	InstanceCount *int64 `json:"instance_count,omitempty" tfsdk:"instance_count"`
+
+	MarketplaceOfferingType *string `json:"marketplace_offering_type,omitempty" tfsdk:"marketplace_offering_type"`
 
 	MarketplaceResourceUuid *string `json:"marketplace_resource_uuid,omitempty" tfsdk:"marketplace_resource_uuid"`
 
@@ -335,7 +324,7 @@ type OpenstackInstanceRancherClusterResponse struct {
 }
 
 type OpenstackInstanceSecurityGroupsResponse struct {
-	Url *string `json:"url,omitempty" tfsdk:"url"`
+	Url *string `json:"url" tfsdk:"url"`
 
 	Description *string `json:"description,omitempty" tfsdk:"description"`
 

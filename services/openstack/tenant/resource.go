@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
@@ -117,12 +118,30 @@ func (r *OpenstackTenantResource) Schema(ctx context.Context, req resource.Schem
 
 					stringplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "ID of external network connected to OpenStack tenant"},
+			"external_network_ref_name": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "External Network Ref Name"},
+			"external_network_ref_uuid": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "External Network Ref Uuid"},
 			"internal_network_id": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 
 					stringplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "ID of internal network in OpenStack tenant"},
+			"is_managed": schema.BoolAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.Bool{
+
+					boolplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "False for an OpenStack project that Waldur does not manage but that shares networks with managed tenants. Waldur only reads such a project: it holds no credentials for it and never provisions, pulls with tenant credentials, bills or deletes it."},
 			"limits": schema.MapAttribute{
 				ElementType: types.Float64Type,
 				Optional:    true,
@@ -130,6 +149,12 @@ func (r *OpenstackTenantResource) Schema(ctx context.Context, req resource.Schem
 
 					mapplanmodifier.RequiresReplace(),
 				}, MarkdownDescription: "Resource limits"},
+			"marketplace_offering_type": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Marketplace Offering Type"},
 			"marketplace_resource_uuid": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -219,7 +244,7 @@ func (r *OpenstackTenantResource) Schema(ctx context.Context, req resource.Schem
 											int64validator.AtMost(65535),
 										}},
 									"protocol": schema.StringAttribute{
-										Optional: true, MarkdownDescription: "The network protocol (TCP, UDP, ICMP, or empty for any protocol)"},
+										Optional: true, MarkdownDescription: "Network protocol: 'tcp', 'udp', 'icmp', empty (any) or an IANA protocol number 0-255 (e.g. '112' for VRRP)."},
 									"remote_group": schema.StringAttribute{
 										Optional: true, MarkdownDescription: "Remote security group that this rule references, if any"},
 									"to_port": schema.Int64Attribute{
@@ -234,7 +259,11 @@ func (r *OpenstackTenantResource) Schema(ctx context.Context, req resource.Schem
 						},
 					},
 				},
-				Optional: true, MarkdownDescription: "Security Groups",
+				Optional: true,
+				PlanModifiers: []planmodifier.Set{
+
+					common.SetElementsFromState{Keys: []string{"description", "name", "rules"}},
+				}, MarkdownDescription: "Security Groups",
 			},
 			"skip_connection_extnet": schema.BoolAttribute{
 				Optional: true,
@@ -345,11 +374,23 @@ func (r *OpenstackTenantResource) resolveUnknownAttributes(data *OpenstackTenant
 	if data.ExternalNetworkId.IsUnknown() {
 		data.ExternalNetworkId = types.StringNull()
 	}
+	if data.ExternalNetworkRefName.IsUnknown() {
+		data.ExternalNetworkRefName = types.StringNull()
+	}
+	if data.ExternalNetworkRefUuid.IsUnknown() {
+		data.ExternalNetworkRefUuid = types.StringNull()
+	}
 	if data.InternalNetworkId.IsUnknown() {
 		data.InternalNetworkId = types.StringNull()
 	}
+	if data.IsManaged.IsUnknown() {
+		data.IsManaged = types.BoolNull()
+	}
 	if data.Limits.IsUnknown() {
 		data.Limits = types.MapNull(types.Float64Type)
+	}
+	if data.MarketplaceOfferingType.IsUnknown() {
+		data.MarketplaceOfferingType = types.StringNull()
 	}
 	if data.MarketplaceResourceUuid.IsUnknown() {
 		data.MarketplaceResourceUuid = types.StringNull()
@@ -473,6 +514,7 @@ func (r *OpenstackTenantResource) Create(ctx context.Context, req resource.Creat
 	// Wait for the order to reach a terminal state (done/erred)
 	finalOrder, err := common.WaitForOrder(ctx, r.client.Client, *orderRes.Uuid, timeout)
 	if err != nil {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		resp.Diagnostics.AddError("Order Failed", err.Error())
 		return
 	}
@@ -481,6 +523,7 @@ func (r *OpenstackTenantResource) Create(ctx context.Context, req resource.Creat
 	if uuid := common.ResolveResourceUUID(finalOrder); uuid != "" {
 		data.UUID = types.StringValue(uuid)
 	} else {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		resp.Diagnostics.AddError("Resource UUID Missing", "Order completed but resource UUID is missing")
 		return
 	}
@@ -488,16 +531,11 @@ func (r *OpenstackTenantResource) Create(ctx context.Context, req resource.Creat
 	// Fetch final resource state to ensure Terraform state matches reality
 	apiResp, err := r.client.Get(ctx, data.UUID.ValueString())
 	if err != nil {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		resp.Diagnostics.AddError("Failed to Read Resource", err.Error())
 		return
 	}
 	resp.Diagnostics.Append(data.CopyFrom(ctx, *apiResp)...)
-	// Refresh resource state after any post-create actions so that the
-	// Terraform state reflects fields applied via RPC actions.
-	if refreshedResp, refreshErr := r.client.Get(ctx, data.UUID.ValueString()); refreshErr == nil {
-		apiResp = refreshedResp
-		resp.Diagnostics.Append(data.CopyFrom(ctx, *apiResp)...)
-	}
 
 	// Resolve unknown attributes to explicit null values
 	r.resolveUnknownAttributes(&data)
@@ -715,6 +753,12 @@ func (r *OpenstackTenantResource) ImportState(ctx context.Context, req resource.
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
+	data.Timeouts = timeouts.Value{
+		Object: types.ObjectNull(map[string]attr.Type{
+			"create": types.StringType,
+			"update": types.StringType,
+			"delete": types.StringType,
+		}),
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

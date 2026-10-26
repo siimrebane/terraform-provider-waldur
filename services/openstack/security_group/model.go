@@ -47,7 +47,6 @@ type OpenstackSecurityGroupFiltersModel struct {
 	ServiceSettingsUuid  types.String `tfsdk:"service_settings_uuid"`
 	Tenant               types.String `tfsdk:"tenant"`
 	TenantUuid           types.String `tfsdk:"tenant_uuid"`
-	Uuid                 types.String `tfsdk:"uuid"`
 }
 
 func (m *OpenstackSecurityGroupFiltersModel) GetSchema() schema.SingleNestedAttribute {
@@ -131,10 +130,6 @@ func (m *OpenstackSecurityGroupFiltersModel) GetSchema() schema.SingleNestedAttr
 				Optional:            true,
 				MarkdownDescription: "Tenant UUID",
 			},
-			"uuid": schema.StringAttribute{
-				Optional:            true,
-				MarkdownDescription: "UUID",
-			},
 		},
 	}
 }
@@ -145,6 +140,8 @@ type OpenstackSecurityGroupModel struct {
 	Customer                types.String `tfsdk:"customer"`
 	Description             types.String `tfsdk:"description"`
 	ErrorMessage            types.String `tfsdk:"error_message"`
+	InstanceCount           types.Int64  `tfsdk:"instance_count"`
+	MarketplaceOfferingType types.String `tfsdk:"marketplace_offering_type"`
 	MarketplaceResourceUuid types.String `tfsdk:"marketplace_resource_uuid"`
 	Name                    types.String `tfsdk:"name"`
 	Project                 types.String `tfsdk:"project"`
@@ -170,6 +167,10 @@ func (model *OpenstackSecurityGroupModel) CopyFrom(ctx context.Context, apiResp 
 	model.Description = common.StringPointerValue(apiResp.Description)
 
 	model.ErrorMessage = common.StringPointerValue(apiResp.ErrorMessage)
+
+	model.InstanceCount = types.Int64PointerValue(apiResp.InstanceCount)
+
+	model.MarketplaceOfferingType = common.StringPointerValue(apiResp.MarketplaceOfferingType)
 
 	model.MarketplaceResourceUuid = common.StringPointerValue(apiResp.MarketplaceResourceUuid)
 

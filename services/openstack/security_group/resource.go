@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
@@ -79,6 +80,18 @@ func (r *OpenstackSecurityGroupResource) Schema(ctx context.Context, req resourc
 
 					stringplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "Error Message"},
+			"instance_count": schema.Int64Attribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.Int64{
+
+					int64planmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Number of instances the security group is attached to. It is annotated by the security group endpoints only, so it is null when the group is rendered as a nested object."},
+			"marketplace_offering_type": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Marketplace Offering Type"},
 			"marketplace_resource_uuid": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -151,7 +164,7 @@ func (r *OpenstackSecurityGroupResource) Schema(ctx context.Context, req resourc
 
 								stringplanmodifier.UseStateForUnknown(),
 								common.UnknownIfNullModifier{},
-							}, MarkdownDescription: "The network protocol (TCP, UDP, ICMP, or empty for any protocol)"},
+							}, MarkdownDescription: "Network protocol: 'tcp', 'udp', 'icmp', empty (any) or an IANA protocol number 0-255 (e.g. '112' for VRRP)."},
 						"remote_group": schema.StringAttribute{
 							Optional: true,
 							Computed: true,
@@ -291,41 +304,11 @@ func (r *OpenstackSecurityGroupResource) Create(ctx context.Context, req resourc
 		return r.client.Get(ctx, data.UUID.ValueString())
 	}, createTimeout)
 	if err != nil {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		resp.Diagnostics.AddError("Failed to wait for resource creation", err.Error())
 		return
 	}
 	apiResp = newResp
-	if !data.Rules.IsNull() && !data.Rules.IsUnknown() {
-		// Post-create: apply action-backed field set in plan via RPC action.
-		var postCreateReqSetRules OpenstackSecurityGroupSetRulesActionRequest
-		resp.Diagnostics.Append(common.PopulateSliceField(ctx, data.Rules, &postCreateReqSetRules.Rules)...)
-
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		if actionErr := r.client.SetRules(ctx, data.UUID.ValueString(), &postCreateReqSetRules); actionErr != nil {
-			resp.Diagnostics.AddError(
-				"RPC Action Failed on Create: set_rules",
-				"An error occurred while applying set_rules after create: "+actionErr.Error(),
-			)
-			return
-		}
-		if _, waitErr := common.WaitForResource(ctx, func(ctx context.Context) (*OpenstackSecurityGroupResponse, error) {
-			return r.client.Get(ctx, data.UUID.ValueString())
-		}, createTimeout); waitErr != nil {
-			resp.Diagnostics.AddError(
-				"Wait for post-create action failed: set_rules",
-				waitErr.Error(),
-			)
-			return
-		}
-	}
-	// Refresh resource state after any post-create actions so that the
-	// Terraform state reflects fields applied via RPC actions.
-	if refreshedResp, refreshErr := r.client.Get(ctx, data.UUID.ValueString()); refreshErr == nil {
-		apiResp = refreshedResp
-	}
 
 	resp.Diagnostics.Append(data.CopyFrom(ctx, *apiResp)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -515,6 +498,12 @@ func (r *OpenstackSecurityGroupResource) ImportState(ctx context.Context, req re
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
+	data.Timeouts = timeouts.Value{
+		Object: types.ObjectNull(map[string]attr.Type{
+			"create": types.StringType,
+			"update": types.StringType,
+			"delete": types.StringType,
+		}),
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

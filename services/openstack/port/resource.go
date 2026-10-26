@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
@@ -64,7 +65,12 @@ func (r *OpenstackPortResource) Schema(ctx context.Context, req resource.SchemaR
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"ip_address": schema.StringAttribute{
-							Optional: true, MarkdownDescription: "Ip Address"},
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+
+								stringplanmodifier.UseStateForUnknown(),
+							}, MarkdownDescription: "Ip Address"},
 						"mac_address": schema.StringAttribute{
 							Optional: true,
 							Computed: true,
@@ -151,6 +157,12 @@ func (r *OpenstackPortResource) Schema(ctx context.Context, req resource.SchemaR
 					stringplanmodifier.RequiresReplace(),
 					stringplanmodifier.UseStateForUnknown(),
 				}, MarkdownDescription: "MAC address of the port"},
+			"marketplace_offering_type": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+
+					stringplanmodifier.UseStateForUnknown(),
+				}, MarkdownDescription: "Marketplace Offering Type"},
 			"marketplace_resource_uuid": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -202,26 +214,14 @@ func (r *OpenstackPortResource) Schema(ctx context.Context, req resource.SchemaR
 			"security_groups": schema.SetNestedAttribute{
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"name": schema.StringAttribute{
-							Optional: true,
-							Computed: true,
-							PlanModifiers: []planmodifier.String{
-
-								stringplanmodifier.UseStateForUnknown(),
-							}, MarkdownDescription: "Name"},
 						"url": schema.StringAttribute{
-							Optional: true,
-							Computed: true,
-							PlanModifiers: []planmodifier.String{
-
-								stringplanmodifier.UseStateForUnknown(),
-							}, MarkdownDescription: "Url"},
+							Required: true, MarkdownDescription: "Url"},
+						"name": schema.StringAttribute{
+							Computed:      true,
+							PlanModifiers: []planmodifier.String{}, MarkdownDescription: "Name"},
 						"uuid": schema.StringAttribute{
-							Computed: true,
-							PlanModifiers: []planmodifier.String{
-
-								stringplanmodifier.UseStateForUnknown(),
-							}, MarkdownDescription: "Uuid"},
+							Computed:      true,
+							PlanModifiers: []planmodifier.String{}, MarkdownDescription: "Uuid"},
 					},
 				},
 				Optional: true,
@@ -229,6 +229,7 @@ func (r *OpenstackPortResource) Schema(ctx context.Context, req resource.SchemaR
 				PlanModifiers: []planmodifier.Set{
 
 					setplanmodifier.UseStateForUnknown(),
+					common.SetElementsFromState{Keys: []string{"url"}},
 				}, MarkdownDescription: "Security Groups",
 			},
 			"state": schema.StringAttribute{
@@ -350,41 +351,11 @@ func (r *OpenstackPortResource) Create(ctx context.Context, req resource.CreateR
 		return r.client.Get(ctx, data.UUID.ValueString())
 	}, createTimeout)
 	if err != nil {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		resp.Diagnostics.AddError("Failed to wait for resource creation", err.Error())
 		return
 	}
 	apiResp = newResp
-	if !data.SecurityGroups.IsNull() && !data.SecurityGroups.IsUnknown() {
-		// Post-create: apply action-backed field set in plan via RPC action.
-		var postCreateReqUpdateSecurityGroups OpenstackPortUpdateSecurityGroupsActionRequest
-		resp.Diagnostics.Append(common.PopulateSetField(ctx, data.SecurityGroups, &postCreateReqUpdateSecurityGroups.SecurityGroups)...)
-
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		if actionErr := r.client.UpdateSecurityGroups(ctx, data.UUID.ValueString(), &postCreateReqUpdateSecurityGroups); actionErr != nil {
-			resp.Diagnostics.AddError(
-				"RPC Action Failed on Create: update_security_groups",
-				"An error occurred while applying update_security_groups after create: "+actionErr.Error(),
-			)
-			return
-		}
-		if _, waitErr := common.WaitForResource(ctx, func(ctx context.Context) (*OpenstackPortResponse, error) {
-			return r.client.Get(ctx, data.UUID.ValueString())
-		}, createTimeout); waitErr != nil {
-			resp.Diagnostics.AddError(
-				"Wait for post-create action failed: update_security_groups",
-				waitErr.Error(),
-			)
-			return
-		}
-	}
-	// Refresh resource state after any post-create actions so that the
-	// Terraform state reflects fields applied via RPC actions.
-	if refreshedResp, refreshErr := r.client.Get(ctx, data.UUID.ValueString()); refreshErr == nil {
-		apiResp = refreshedResp
-	}
 
 	resp.Diagnostics.Append(data.CopyFrom(ctx, *apiResp)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -456,8 +427,6 @@ func (r *OpenstackPortResource) Update(ctx context.Context, req resource.UpdateR
 
 		requestBody.TargetTenant = data.TargetTenant.ValueStringPointer()
 	}
-
-	resp.Diagnostics.Append(common.PopulateOptionalSetField(ctx, data.SecurityGroups, &requestBody.SecurityGroups)...)
 
 	if anyChanges {
 		var err error
@@ -581,6 +550,12 @@ func (r *OpenstackPortResource) ImportState(ctx context.Context, req resource.Im
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
+	data.Timeouts = timeouts.Value{
+		Object: types.ObjectNull(map[string]attr.Type{
+			"create": types.StringType,
+			"update": types.StringType,
+			"delete": types.StringType,
+		}),
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

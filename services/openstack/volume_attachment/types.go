@@ -1,5 +1,9 @@
 package volume_attachment
 
+import (
+	"github.com/waldur/terraform-provider-waldur/internal/sdk/common"
+)
+
 type OpenstackVolumeAttachmentCreateRequest struct {
 	Device *string `json:"device,omitempty" tfsdk:"device"`
 
@@ -10,6 +14,8 @@ type OpenstackVolumeAttachmentCreateRequest struct {
 
 type OpenstackVolumeAttachmentResponse struct {
 	UUID *string `json:"uuid"`
+
+	ActionDetails common.JSONStringMap `json:"action_details,omitempty" tfsdk:"action_details"`
 
 	AvailabilityZone *string `json:"availability_zone,omitempty" tfsdk:"availability_zone"`
 
@@ -39,6 +45,8 @@ type OpenstackVolumeAttachmentResponse struct {
 
 	InstanceMarketplaceUuid *string `json:"instance_marketplace_uuid,omitempty" tfsdk:"instance_marketplace_uuid"`
 
+	MarketplaceOfferingType *string `json:"marketplace_offering_type,omitempty" tfsdk:"marketplace_offering_type"`
+
 	MarketplaceResourceUuid *string `json:"marketplace_resource_uuid,omitempty" tfsdk:"marketplace_resource_uuid"`
 
 	Name *string `json:"name,omitempty" tfsdk:"name"`
@@ -64,6 +72,9 @@ type OpenstackVolumeAttachmentResponse struct {
 	TypeName *string `json:"type_name,omitempty" tfsdk:"type_name"`
 
 	Url *string `json:"url,omitempty" tfsdk:"url"`
+}
+
+type OpenstackVolumeAttachmentActionDetailsResponse struct {
 }
 
 func (r *OpenstackVolumeAttachmentResponse) GetState() string {

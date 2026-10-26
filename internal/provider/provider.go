@@ -14,8 +14,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/waldur/terraform-provider-waldur/internal/client"
 	core "github.com/waldur/terraform-provider-waldur/services/core"
+	customer "github.com/waldur/terraform-provider-waldur/services/customer"
+	identity "github.com/waldur/terraform-provider-waldur/services/identity"
 	marketplace "github.com/waldur/terraform-provider-waldur/services/marketplace"
 	openstack "github.com/waldur/terraform-provider-waldur/services/openstack"
+	project "github.com/waldur/terraform-provider-waldur/services/project"
 	structure "github.com/waldur/terraform-provider-waldur/services/structure"
 )
 
@@ -49,6 +52,27 @@ func (p *waldurProvider) Metadata(ctx context.Context, req provider.MetadataRequ
 
 func (p *waldurProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		// Rendered as the provider's Overview page on the Terraform Registry, and
+		// stripped of markup to become the `description:` in its front matter,
+		// which is what registry search results show. Without it tfplugindocs
+		// emits an empty description and no body under the heading -- which is
+		// why the Overview has been blank since the first release.
+		//
+		// Keep this as flowing prose. tfplugindocs strips markdown for the front
+		// matter without preserving item boundaries, so a bullet list here comes
+		// out as one run-on sentence in search results.
+		MarkdownDescription: "Manage [Waldur](https://waldur.com/) resources with Terraform. " +
+			"Waldur is an open source platform for managing hybrid cloud " +
+			"infrastructure and running a service marketplace, and this provider drives its " +
+			"REST API, so anything the portal exposes can be described as code.\n\n" +
+			"It covers organisational structure (customers, projects, users and role " +
+			"assignments), marketplace ordering and the resources those orders produce, and " +
+			"the OpenStack estate behind them -- tenants, networks, subnets, instances, " +
+			"volumes and security groups.\n\n" +
+			"Configure it with the URL of your Waldur deployment and an " +
+			"API token, either inline or through the `WALDUR_API_URL` and " +
+			"`WALDUR_ACCESS_TOKEN` environment variables. Tokens are issued from your user " +
+			"profile in the portal.",
 		Attributes: map[string]schema.Attribute{
 			"endpoint": schema.StringAttribute{
 				MarkdownDescription: "Waldur API endpoint URL. Can also be set via the `WALDUR_API_URL` environment variable.",
@@ -124,8 +148,11 @@ func (p *waldurProvider) Configure(ctx context.Context, req provider.ConfigureRe
 func (p *waldurProvider) Resources(ctx context.Context) []func() resource.Resource {
 	var res []func() resource.Resource
 	res = append(res, core.GetResources()...)
+	res = append(res, customer.GetResources()...)
+	res = append(res, identity.GetResources()...)
 	res = append(res, marketplace.GetResources()...)
 	res = append(res, openstack.GetResources()...)
+	res = append(res, project.GetResources()...)
 	res = append(res, structure.GetResources()...)
 	return res
 }
@@ -133,8 +160,11 @@ func (p *waldurProvider) Resources(ctx context.Context) []func() resource.Resour
 func (p *waldurProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	var ds []func() datasource.DataSource
 	ds = append(ds, core.GetDataSources()...)
+	ds = append(ds, customer.GetDataSources()...)
+	ds = append(ds, identity.GetDataSources()...)
 	ds = append(ds, marketplace.GetDataSources()...)
 	ds = append(ds, openstack.GetDataSources()...)
+	ds = append(ds, project.GetDataSources()...)
 	ds = append(ds, structure.GetDataSources()...)
 	return ds
 }
@@ -142,8 +172,11 @@ func (p *waldurProvider) DataSources(ctx context.Context) []func() datasource.Da
 func (p *waldurProvider) Actions(ctx context.Context) []func() action.Action {
 	var acts []func() action.Action
 	acts = append(acts, core.GetActions()...)
+	acts = append(acts, customer.GetActions()...)
+	acts = append(acts, identity.GetActions()...)
 	acts = append(acts, marketplace.GetActions()...)
 	acts = append(acts, openstack.GetActions()...)
+	acts = append(acts, project.GetActions()...)
 	acts = append(acts, structure.GetActions()...)
 	return acts
 }
@@ -151,8 +184,11 @@ func (p *waldurProvider) Actions(ctx context.Context) []func() action.Action {
 func (p *waldurProvider) ListResources(ctx context.Context) []func() list.ListResource {
 	var lr []func() list.ListResource
 	lr = append(lr, core.GetListResources()...)
+	lr = append(lr, customer.GetListResources()...)
+	lr = append(lr, identity.GetListResources()...)
 	lr = append(lr, marketplace.GetListResources()...)
 	lr = append(lr, openstack.GetListResources()...)
+	lr = append(lr, project.GetListResources()...)
 	lr = append(lr, structure.GetListResources()...)
 	return lr
 }

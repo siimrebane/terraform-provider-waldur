@@ -83,6 +83,8 @@ func (d *OpenstackPortDataSource) Schema(ctx context.Context, req datasource.Sch
 				Computed:    true, MarkdownDescription: "Floating Ips"},
 			"mac_address": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "MAC address of the port"},
+			"marketplace_offering_type": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Marketplace Offering Type"},
 			"marketplace_resource_uuid": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Marketplace Resource Uuid"},
 			"name": schema.StringAttribute{
@@ -102,10 +104,10 @@ func (d *OpenstackPortDataSource) Schema(ctx context.Context, req datasource.Sch
 			"security_groups": schema.SetNestedAttribute{
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"name": schema.StringAttribute{
-							Computed: true, MarkdownDescription: "Name"},
 						"url": schema.StringAttribute{
 							Computed: true, MarkdownDescription: "Url"},
+						"name": schema.StringAttribute{
+							Computed: true, MarkdownDescription: "Name"},
 						"uuid": schema.StringAttribute{
 							Computed: true, MarkdownDescription: "Uuid"},
 					},

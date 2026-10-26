@@ -85,8 +85,14 @@ func (d *OpenstackSubnetDataSource) Schema(ctx context.Context, req datasource.S
 			},
 			"ip_version": schema.Int64Attribute{
 				Computed: true, MarkdownDescription: "IP protocol version (4 or 6)"},
+			"ipv6_address_mode": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "How instances on an IPv6 subnet get their address. Set at creation only; null for an IPv4 subnet."},
+			"ipv6_ra_mode": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "How the router advertises an IPv6 subnet. Set at creation only; null for an IPv4 subnet."},
 			"is_connected": schema.BoolAttribute{
 				Computed: true, MarkdownDescription: "Is subnet connected to the default tenant router."},
+			"marketplace_offering_type": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Marketplace Offering Type"},
 			"marketplace_resource_uuid": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Marketplace Resource Uuid"},
 			"name": schema.StringAttribute{
@@ -95,14 +101,24 @@ func (d *OpenstackSubnetDataSource) Schema(ctx context.Context, req datasource.S
 				Computed: true, MarkdownDescription: "Network to which this subnet belongs"},
 			"network_name": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Network Name"},
+			"port_security_enabled": schema.BoolAttribute{
+				Computed: true, MarkdownDescription: "Port Security Enabled"},
 			"project": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Project"},
 			"resource_type": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Resource Type"},
+			"router": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Router to attach the subnet to. Optional: when omitted Waldur picks a router of the tenant itself. Cannot be changed here afterwards -- use the router's add/remove interface actions."},
+			"router_name": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Router Name"},
+			"router_uuid": schema.StringAttribute{
+				Computed: true, MarkdownDescription: "Router Uuid"},
 			"state": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "State"},
 			"tenant": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Tenant"},
+			"tenant_is_managed": schema.BoolAttribute{
+				Computed: true, MarkdownDescription: "False when the subnet's network belongs to an OpenStack project that Waldur does not manage and only reaches tenants through an RBAC share."},
 			"tenant_name": schema.StringAttribute{
 				Computed: true, MarkdownDescription: "Tenant Name"},
 			"url": schema.StringAttribute{
